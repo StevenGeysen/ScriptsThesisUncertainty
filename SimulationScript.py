@@ -57,8 +57,6 @@ alphaOptions = np.array([0.05, 0.1, 0.25, 0.5])
 betaOptions = np.array([1, 1.5, 2, 2.5, 3, 15])
 # Simulated model
 sim_model = 'Hybrid'
-# Simulated action selection method
-sim_asm = 'Soft'
 # Set plot number
 plotnr = 0
 #%% Data storage
