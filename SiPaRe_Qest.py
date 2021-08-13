@@ -19,19 +19,12 @@ Notes:      - Based on Verguts & Calderon
                     - Estimated prediction error of selected cue in
                       ParameterRetrievalSimulations
                 * Loop over different values for alpha and beta
-            
-To do:      - Optimize optimize.fmin(xtol, ftol, maxiter, maxfun)
-            - Fix Pearce-Hall
-            - Optimize script
-            
-Questions:  
-            
+                 
 Comments:   SG: Check directory and file name of model script. This script
                 should be in the same folder as the model script and 
                 the folder 'Simulations'.
             SG: Uses numpy matrix without titles.
-            SG: Adjust settings
-            SG: Check if correct model is commented
+            SG: Adjust settings, check if correct model is used.
             
 Sources:    https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.fmin.html
             https://docs.scipy.org/doc/scipy/reference/tutorial/optimize.html#nelder-mead-simplex-algorithm-method-nelder-mead
