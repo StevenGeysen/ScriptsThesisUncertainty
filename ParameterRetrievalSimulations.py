@@ -26,8 +26,7 @@ Comments:   SG: Check directory and file name of model script. This script
             SG: Adjust settings
             SG: Check if correct model is commented
             
-Sources:    https://github.com/marzecovaa/StevensRLProject/tree/master/ExperimentalData
-            https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.fmin.html
+Sources:    https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.fmin.html
             https://docs.scipy.org/doc/scipy/reference/tutorial/optimize.html#nelder-mead-simplex-algorithm-method-nelder-mead
 """
 
