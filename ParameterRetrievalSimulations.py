@@ -11,7 +11,7 @@ Notes:      - Based on Verguts & Calderon
                     Different dataframes with RS pre and post optimisation.
                 * Parameters
                     - [0] model parameter
-                    - [1] selection method parameter
+                    - [1] SoftMax parameter
                 * 1 cue updated
                 * Correlation functions
                     - Estimated value of prediction error of selected cue
@@ -38,7 +38,7 @@ Sources:    https://github.com/marzecovaa/StevensRLProject/tree/master/Experimen
 
 import os
 import time
-import DataModelSim1 as mpe
+import DataModelSim as dms
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -137,11 +137,11 @@ def fModelSpearCor(parameters=(0.01, 0.5), model='RW', data=SimData):
     #-----------------
     if model.upper() == 'RW':
         ## parameters[0] = alpha, relCue = 2, irrelCue = 3, relCueCol = 4, targetLoc = 5, data
-        Q_est, selcues, pe = mpe.frw_1c(parameters = parameters, data = data)
+        Q_est, selcues, pe = dms.frw_1c(parameters = parameters, data = data)
         
     elif model.upper() == 'HYBRID':
         ## parameters[0] = eta, relCue = 2, irrelCue = 3, relCueCol = 4, targetLoc = 5, data, salpha = 0.01
-        Q_est, selcues, pe = mpe.fhybrid_1c(parameters = parameters, data = data)
+        Q_est, selcues, pe = dms.fhybrid_1c(parameters = parameters, data = data)
 
     ## Estimated value of selected cue
     EstSel = np.full((data.shape[0], 1), np.nan)
@@ -191,11 +191,11 @@ def fModelSpearCorAbs(parameters=(0.01, 0.5), model='RW', data=SimData):
     #-----------------
     if model.upper() == 'RW':
         ## parameters[0] = alpha, relCue = 2, irrelCue = 3, relCueCol = 4, targetLoc = 5, data
-        Q_est, selcues, pe = mpe.frw_1c(parameters = parameters, data = data)
+        Q_est, selcues, pe = dms.frw_1c(parameters = parameters, data = data)
         
     elif model.upper() == 'HYBRID':
         ## parameters[0] = eta, relCue = 2, irrelCue = 3, relCueCol = 4, targetLoc = 5, data, salpha = 0.01
-        Q_est, selcues, pe = mpe.fhybrid_1c(parameters = parameters, data = data)
+        Q_est, selcues, pe = dms.fhybrid_1c(parameters = parameters, data = data)
 
     ## Estimated value of selected cue
     EstSel = np.full((data.shape[0], 1), np.nan)
@@ -246,11 +246,11 @@ def fModelSpearCorPos(parameters=(0.01, 0.5), model='RW', data=SimData):
     #-----------------
     if model.upper() == 'RW':
         ## parameters[0] = alpha, relCue = 2, irrelCue = 3, relCueCol = 4, targetLoc = 5, data
-        Q_est, selcues, pe = mpe.frw_1c(parameters = parameters, data = data)
+        Q_est, selcues, pe = dms.frw_1c(parameters = parameters, data = data)
         
     elif model.upper() == 'HYBRID':
         ## parameters[0] = eta, relCue = 2, irrelCue = 3, relCueCol = 4, targetLoc = 5, data, salpha = 0.01
-        Q_est, selcues, pe = mpe.fhybrid_1c(parameters = parameters, data = data)
+        Q_est, selcues, pe = dms.fhybrid_1c(parameters = parameters, data = data)
 
     ## Estimated value of selected cue
     EstSel = np.full((data.shape[0], 1), np.nan)
@@ -338,9 +338,9 @@ for alpha in range(len(alphaOptions)):
             # Pre optimization
             ##################
             if opt_model.upper() == 'RW':
-                Qest_pre, selcue_pre, pe_pre = mpe.frw_1c(parameters = x0, data = SimData)
+                Qest_pre, selcue_pre, pe_pre = dms.frw_1c(parameters = x0, data = SimData)
             elif opt_model.upper() == 'HYBRID':
-                Qest_pre, selcue_pre, pe_pre = mpe.fhybrid_1c(parameters = x0, data = SimData)
+                Qest_pre, selcue_pre, pe_pre = dms.fhybrid_1c(parameters = x0, data = SimData)
             
             ## Store dataframe pre optimisation
             for triali in range(SimData.shape[0]):
@@ -388,18 +388,18 @@ for alpha in range(len(alphaOptions)):
             ###################
             if opt_model.upper() == 'RW':
                 # Non-absolute values
-                Qest_post_na, selcue_post_na, pe_post_na = mpe.frw_1c(parameters = estPar_na, data = SimData)
+                Qest_post_na, selcue_post_na, pe_post_na = dms.frw_1c(parameters = estPar_na, data = SimData)
                 # Absolute values
-                Qest_post_abs, selcue_post_abs, pe_post_abs = mpe.frw_1c(parameters = estPar_abs, data = SimData)
+                Qest_post_abs, selcue_post_abs, pe_post_abs = dms.frw_1c(parameters = estPar_abs, data = SimData)
                 # Positive non-absolute values
-                Qest_post_pos, selcue_post_pos, pe_post_pos = mpe.frw_1c(parameters = estPar_pos, data = SimData)
+                Qest_post_pos, selcue_post_pos, pe_post_pos = dms.frw_1c(parameters = estPar_pos, data = SimData)
             elif opt_model.upper() == 'HYBRID':
                 # Non-absolute values
-                Qest_post_na, selcue_post_na, pe_post_na = mpe.fhybrid_1c(parameters = estPar_na, data = SimData)
+                Qest_post_na, selcue_post_na, pe_post_na = dms.fhybrid_1c(parameters = estPar_na, data = SimData)
                 # Absolute values
-                Qest_post_abs, selcue_post_abs, pe_post_abs = mpe.fhybrid_1c(parameters = estPar_abs, data = SimData)
+                Qest_post_abs, selcue_post_abs, pe_post_abs = dms.fhybrid_1c(parameters = estPar_abs, data = SimData)
                 # Positive non-absolute values
-                Qest_post_pos, selcue_post_pos, pe_post_pos = mpe.fhybrid_1c(parameters = estPar_pos, data = SimData)
+                Qest_post_pos, selcue_post_pos, pe_post_pos = dms.fhybrid_1c(parameters = estPar_pos, data = SimData)
             
             ## Store dataframe post optimisation
             for triali in range(SimData.shape[0]):
