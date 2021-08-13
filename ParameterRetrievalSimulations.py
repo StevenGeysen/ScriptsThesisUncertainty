@@ -118,7 +118,6 @@ def fModelSpearCor(parameters=(0.01, 0.5), model='RW', data=SimData):
     model : string
         Learning model
             * 'rw' for Rescorla-Wagner
-            * 'ph' for Pearce-Hall
             * 'hybrid' for RW-PH hybrid model.
         The default is 'RW'.
     data : array
@@ -172,7 +171,6 @@ def fModelSpearCorAbs(parameters=(0.01, 0.5), model='RW', data=SimData):
     model : string
         Learning model
             * 'rw' for Rescorla-Wagner
-            * 'ph' for Pearce-Hall
             * 'hybrid' for RW-PH hybrid model.
         The default is 'RW'.
     data : array
@@ -227,7 +225,6 @@ def fModelSpearCorPos(parameters=(0.01, 0.5), model='RW', data=SimData):
     model : string
         Learning model
             * 'rw' for Rescorla-Wagner
-            * 'ph' for Pearce-Hall
             * 'hybrid' for RW-PH hybrid model.
         The default is 'RW'.
     data : array
