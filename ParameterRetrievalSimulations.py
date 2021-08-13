@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """     Thesis Simulated Paremeter Retrieval
-Last edit:  2021/08/12
+Last edit:  2021/08/13
 Author(s):  Geysen, Steven (01611639; SG)
 Notes:      - Based on Verguts & Calderon
             - Data from Marzecova et al. (2019)
@@ -11,7 +11,7 @@ Notes:      - Based on Verguts & Calderon
                     Different dataframes with RS pre and post optimisation.
                 * Parameters
                     - [0] model parameter
-                    - [1] SoftMax parameter
+                    - [1] selection method parameter
                 * 1 cue updated
                 * Correlation functions
                     - Estimated value of prediction error of selected cue
@@ -88,10 +88,10 @@ plotnr = 0
 nsim = int(len(simList))  # All files
 ## Start parameters
 x0 = np.array([0.1, 1])
-## Options initial guess alpha
+## Starting values alpha
 ## SG: Ground truth alphas used in simulation: 0.05, 0.1, 0.25, 0.5
 alphaOptions = np.array([0.2, 0.5, 0.7])
-## Options initial guess beta
+## Starting values beta
 ## SG: Ground truth betas used in simulation: 1, 1.5, 2, 2.5, 3, 15
 betaOptions = np.array([1, 2, 3, 10, 20])
 ## Model
