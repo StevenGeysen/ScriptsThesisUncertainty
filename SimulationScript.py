@@ -101,7 +101,6 @@ def ppSim(params=(0.1, 20), w0=0.5, ntrials=640, nstim=2, nswitch=7, ppnr=1, mod
     model : string, optional
         Learning model
             * 'rw' for Rescorla-Wagner
-            * 'ph' for Pearce-Hall
             * 'hybrid' for RW-PH hybrid model
         The default is 'RW'.
     file_name : string, optional
