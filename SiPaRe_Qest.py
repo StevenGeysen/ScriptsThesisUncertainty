@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Thesis Simulated Paremeter Retrieval -- Version 1.6-Qest
+"""     Thesis Simulated Paremeter Retrieval -- Qest
 Last edit:  2021/08/13
 Author(s):  Geysen, Steven (01611639; SG)
 Notes:      - Based on Verguts & Calderon
