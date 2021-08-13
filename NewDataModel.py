@@ -356,7 +356,7 @@ def frw_2c(parameters=(0.01, 0.5), relCue=3, irrelCue=4, relCueCol=7, targetLoc=
 
 
 # ~~ RW-PH Hybrid ~~ #
-def fhybrid_2c(parameters=(0.01, 0.5), relCue=3, irrelCue=4, relCueCol=7, targetLoc=6, selMeth='Soft', data=un_data, salpha=0.01):
+def fhybrid_2c(parameters=(0.01, 0.5), relCue=3, irrelCue=4, relCueCol=7, targetLoc=6, data=un_data, salpha=0.01):
     """
     RW-PH hybrid model
     Action selection methods calculations in model.
