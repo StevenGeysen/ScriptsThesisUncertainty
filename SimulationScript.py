@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Thesis Data Simulation
-Last edit:  2021/08/12
+"""     Thesis Data Simulation -- Version 2.0
+Last edit:  2022/03/21
 Author(s):  Geysen, Steven (01611639; SG)
 Notes:      - Based on the scripts in Ch6 of Modeling of Cognitive
                 Processes (2020) and the data from Marzecova et al. (2019)
             - 4 spaces for tabs
             - Release notes:
+                * New beginings
                 * Simulations only
                     Simulation function returns pandas.DataFrame
                 * RT sampling
@@ -37,9 +38,12 @@ Sources:    https://www.frontiersin.org/articles/10.3389/fpsyg.2018.00612/full
 import inspect
 import os
 import time
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+
+from pathlib import Path
 from scipy import stats
 
 
@@ -67,6 +71,9 @@ if not os.path.isdir(SaveDataDir):
     os.mkdir(SaveDataDir)
 os.chdir(SaveDataDir)
 
+# SIM_DIR = Path.cwd() / 'Simulations'
+# if not Path.exists(SIM_DIR):
+#     Path.mkdir(SIM_DIR)
 
 
 #%% ~~ Function ~~ %%#
@@ -140,7 +147,12 @@ def ppSim(params=(0.1, 20), w0=0.5, ntrials=640, nstim=2, nswitch=7, ppnr=1, mod
 
     # DataFrame
     #----------
-    column_list = ['id', 'trial', 'relCue', 'irrelCue', 'relCueCol', 'targetLoc', 'Choice', 'Reward', 'Cue_1 est', 'Cue_2 est', 'Cue_1 pe', 'Cue_2 pe', 'RT']
+    column_list = [
+        'id', 'trial', 'relCue', 'irrelCue', 'relCueCol', 'targetLoc',
+        'Choice', 'Reward', 'Cue_1 est', 'Cue_2 est', 'Cue_1 pe',
+        'Cue_2 pe', 'RT'
+        ]
+    dataDict = {keyi: [] for keyi in column_list}
     data = pd.DataFrame(columns=column_list)
 
 
