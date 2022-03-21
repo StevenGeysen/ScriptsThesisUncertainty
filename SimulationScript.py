@@ -52,7 +52,7 @@ from scipy import stats
 
 
 # Number of simulations
-nsims = 5
+N_SIMS = 5
 # Start parameters
 x0 = np.array([0.1, 1])
 ## Alpha options
@@ -312,37 +312,37 @@ def ppSim(params=(0.1, 20), w0=0.5, ntrials=640, nstim=2, nswitch=7, ppnr=1, mod
 
 
 ## SG: ([x, y, z])
-woc_pe_rt = np.full((nsims * len(alphaOptions), 2, len(betaOptions)), np.nan)
-woc_abspe_rt = np.full((nsims * len(alphaOptions), 2, len(betaOptions)), np.nan)
-woc_q_rt = np.full((nsims * len(alphaOptions), 2, len(betaOptions)), np.nan)
-woc_sum_rt = np.full((nsims * len(alphaOptions), 2, len(betaOptions)), np.nan)
-wocmeanpe = np.full((nsims * len(alphaOptions), len(betaOptions)), np.nan)
-wocmeanrt = np.full((nsims * len(alphaOptions), 3, len(betaOptions)), np.nan)
+woc_pe_rt = np.full((N_SIMS * len(alphaOptions), 2, len(betaOptions)), np.nan)
+woc_abspe_rt = np.full((N_SIMS * len(alphaOptions), 2, len(betaOptions)), np.nan)
+woc_q_rt = np.full((N_SIMS * len(alphaOptions), 2, len(betaOptions)), np.nan)
+woc_sum_rt = np.full((N_SIMS * len(alphaOptions), 2, len(betaOptions)), np.nan)
+wocmeanpe = np.full((N_SIMS * len(alphaOptions), len(betaOptions)), np.nan)
+wocmeanrt = np.full((N_SIMS * len(alphaOptions), 3, len(betaOptions)), np.nan)
 
-woc_valpe_rt = np.full((nsims * len(alphaOptions), 2, len(betaOptions)), np.nan)
-woc_invalpe_rt = np.full((nsims * len(alphaOptions), 2, len(betaOptions)), np.nan)
+woc_valpe_rt = np.full((N_SIMS * len(alphaOptions), 2, len(betaOptions)), np.nan)
+woc_invalpe_rt = np.full((N_SIMS * len(alphaOptions), 2, len(betaOptions)), np.nan)
 
 
 start_total = time.time()
 # Alpha loop
-for alpha in range(len(alphaOptions)):
-    x0[0] = alphaOptions[alpha]
+for alphai, alpha in enumerate(alphaOptions):
+    x0[0] = alpha
     # Beta loop
-    for beta in range(len(betaOptions)):
-        x0[1] = betaOptions[beta]
+    for betai, beta in enumerate(betaOptions):
+        x0[1] = beta
         start_sim = time.time()
         # Simulation loop
-        for pp in range(nsims):
+        for pp in range(N_SIMS):
             print('-----')
             print(pp, beta, alpha)
             
             # New simulated dataframe
             newSim = ppSim(params = x0, ppnr = pp, model = sim_model,
-                                  file_name = f'alpha_{alphaOptions[alpha]}_beta_{betaOptions[beta]}_nsim{pp}')
-            wocmeanpe[pp + (alpha * nsims), beta] = np.nanmean(newSim['selPE'])
-            wocmeanrt[pp + (alpha * nsims), 0, beta] = np.nanmean(newSim['RT'])
-            wocmeanrt[pp + (alpha * nsims), 1, beta] = np.nanmean(newSim['RT valid'])
-            wocmeanrt[pp + (alpha * nsims), 2, beta] = np.nanmean(newSim['RT invalid'])
+                                  file_name = f'alpha_{alpha}_beta_{beta}_nsim{pp}')
+            wocmeanpe[pp + (alphai * N_SIMS), betai] = np.nanmean(newSim['selPE'])
+            wocmeanrt[pp + (alphai * N_SIMS), 0, betai] = np.nanmean(newSim['RT'])
+            wocmeanrt[pp + (alphai * N_SIMS), 1, betai] = np.nanmean(newSim['RT valid'])
+            wocmeanrt[pp + (alphai * N_SIMS), 2, betai] = np.nanmean(newSim['RT invalid'])
             print(f"PE {newSim['selPE'].describe()}")
             
             # # Sanity checks
@@ -400,22 +400,22 @@ for alpha in range(len(alphaOptions)):
             
             # Calculations
             ## Correlation
-            woc_pe_rt[pp + (alpha * nsims), :, beta] = stats.spearmanr(newSim['RT'], newSim['selPE'], nan_policy = 'omit')
-            woc_abspe_rt[pp + (alpha * nsims), :, beta] = stats.spearmanr(newSim['RT'], abs(newSim['selPE']), nan_policy = 'omit')
+            woc_pe_rt[pp + (alphai * N_SIMS), :, betai] = stats.spearmanr(newSim['RT'], newSim['selPE'], nan_policy = 'omit')
+            woc_abspe_rt[pp + (alphai * N_SIMS), :, betai] = stats.spearmanr(newSim['RT'], abs(newSim['selPE']), nan_policy = 'omit')
             # print(f"Correlation selPE-RT without cutoff {stats.spearmanr(newSim['RT'], newSim['selPE'], nan_policy = 'omit')[0]}")
             
-            woc_q_rt[pp + (alpha * nsims), :, beta] = stats.spearmanr(newSim['RT'], newSim['selQ_est'], nan_policy = 'omit')
+            woc_q_rt[pp + (alphai * N_SIMS), :, betai] = stats.spearmanr(newSim['RT'], newSim['selQ_est'], nan_policy = 'omit')
             # print(f"Correlation selQ_est-RT without cutoff {stats.spearmanr(newSim['RT'], newSim['selQ_est'], nan_policy = 'omit')[0]}")
             
-            woc_sum_rt[pp + (alpha * nsims), :, beta] = stats.spearmanr(newSim['RT'], newSim['sumQ_est'], nan_policy = 'omit')
+            woc_sum_rt[pp + (alphai * N_SIMS), :, betai] = stats.spearmanr(newSim['RT'], newSim['sumQ_est'], nan_policy = 'omit')
             # print(f"Correlation sumQ_est-RT without cutoff {stats.spearmanr(newSim['RT'], newSim['sumQ_est'], nan_policy = 'omit')[0]}")
             
-            woc_valpe_rt[pp + (alpha * nsims), :, beta] = stats.spearmanr(newSim['RT valid'], newSim['PE valid'], nan_policy = 'omit')
-            woc_invalpe_rt[pp + (alpha * nsims), :, beta] = stats.spearmanr(newSim['RT invalid'], newSim['PE invalid'], nan_policy = 'omit')
+            woc_valpe_rt[pp + (alphai * N_SIMS), :, betai] = stats.spearmanr(newSim['RT valid'], newSim['PE valid'], nan_policy = 'omit')
+            woc_invalpe_rt[pp + (alphai * N_SIMS), :, betai] = stats.spearmanr(newSim['RT invalid'], newSim['PE invalid'], nan_policy = 'omit')
             
         
         end_sim = time.time()
-        print(f'duration of alpha {alpha + 1} is {round(end_sim - start_sim, 2)} seconds')
+        print(f'duration of alpha {alphai + 1} is {round(end_sim - start_sim, 2)} seconds')
 
 end_total = time.time()
 print(f'total duration: {round((end_total - start_total) / 60, 2)} minutes')
