@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """     Simulations -- Version 1
-Last edit:  2022/06/17
+Last edit:  2022/06/21
 Author(s):  Geysen, Steven (SG)
 Notes:      - Simulations of the task used by Marzecova et al. (2019)
             - Release notes:
@@ -28,6 +28,9 @@ Sources:    https://www.frontiersin.org/articles/10.3389/fpsyg.2018.00612/full
 #%% ~~ Imports and directories ~~ %%#
 
 
+import re
+import time
+
 import numpy as np
 import pandas as pd
 import sim_functions as sf
@@ -38,6 +41,7 @@ from pathlib import Path
 from scipy import stats
 
 
+# Directories
 SPINE = Path.cwd().parent
 OUT_DIR = SPINE / 'results'
 if not Path.exists(OUT_DIR):
@@ -80,6 +84,15 @@ for simi in range(N_SIMS):
     Hugo = sf.simHybrid_1c((alpha, beta), Daphne)
     
     Hugo.to_csv(SIM_DIR / f'simModels_alpha_{alpha}_beta_{beta}.csv')
+
+
+
+#%% ~~ Fitting ~~ %%#
+#####################
+
+
+simList = [filei.name for filei in Path.iterdir(SIM_DIR)]
+
 
 
 # ------------------------------------------------------------------------ End
