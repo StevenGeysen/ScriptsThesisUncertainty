@@ -1,25 +1,33 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Simulation functions -- Version 1.1
-Last edit:  2022/06/17
+"""     Simulation functions -- Version 1.2
+Last edit:  2022/06/21
 Author(s):  Geysen, Steven (SG)
 Notes:      - Functions used for the simulation of the task used by
-                Marzecova et al. (2019). Both structure as models.
+                Marzecova et al. (2019). Both structure and models.
             - Models with SoftMax policy
                 * Rescorla-Wagner (Daphne)
                 * Rescorla-Wagner - Pearce-Hall hybrid (Hugo)
+                * Win-stay-lose-shift (Wilhelm)
+                * Random (Renee)
             - Release notes:
-                * Simulate response times
-                * Bug fixes
-                
+                * Win-stay-lose-shift model
+                * Random model
             
 To do:      - Implement in other scripts
             - Argmax
+            - (negative) log likelihood
             
 Comments:   SG: Simulations return pandas.DataFrame. Model functions return
                 originale data with model selection appended.
             
-Sources:    
+Sources:    https://www.frontiersin.org/articles/10.3389/fpsyg.2018.00612/full
+            https://docs.sympy.org/latest/modules/stats.html
+            https://github.com/Kingsford-Group/ribodisomepipeline/blob/master/scripts/exGaussian.py
+            https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.exponnorm.html
+            https://hannekedenouden.ruhosting.nl/RLtutorial/html/SimulationTopPage.html
+            https://lindeloev.shinyapps.io/shiny-rt/
+            https://elifesciences.org/articles/49547
 """
 
 
@@ -35,18 +43,18 @@ from scipy import stats
 
 
 
-#%% ~~ Function ~~ %%#
-######################
+#%% ~~ Structure ~~ %%#
+#######################
 
 
-def sim_experiment(ppnr=1, ntrials=640, nswitch=7):
+def sim_experiment(simnr=1, ntrials=640, nswitch=7):
     """
     Simulate the eperimental structure of Marzecova et al. (2019)
 
     Parameters
     ----------
-    ppnr : int, optional
-        Participant number. Used for the randomisation of the reward
+    simnr : int, optional
+        Simulation number. Used for the randomisation of the reward
             probabilities.
         The default is 1.
     ntrials : int, optional
@@ -79,7 +87,7 @@ def sim_experiment(ppnr=1, ntrials=640, nswitch=7):
         'relCueCol', 'relCue', 'irrelCue', 'targetLoc', 'validity'
         ]
     dataDict = {keyi: [] for keyi in column_list}
-    dataDict['id'] = ppnr
+    dataDict['id'] = simnr
     
     # Task
     n_stim = 2
@@ -87,9 +95,9 @@ def sim_experiment(ppnr=1, ntrials=640, nswitch=7):
     relCueCol = np.random.randint(n_stim)
     ## Probabilities of reward for each stim
     prob = np.full(n_stim, 0.5)
-    ## SG: For participants with an even number is the initial probability
+    ## SG: For simulations with an even number is the initial probability
         ## of the relevant cue 0.7
-    if ppnr % 2 == 0:
+    if simnr % 2 == 0:
         prob[relCueCol] = 0.7
     else:
         prob[relCueCol] = 0.85
@@ -105,8 +113,8 @@ def sim_experiment(ppnr=1, ntrials=640, nswitch=7):
             if triali == switch[0]:
                 relCueCol = 1 - relCueCol
                 
-                if ppnr % 2 == 0:
-                    ##SG: For participants with an even number is in the
+                if simnr % 2 == 0:
+                    ##SG: For simulations with an even number is in the
                         # second half of trials the probability
                         # of the relevant cue 0.85.
                     if triali >= ntrials / 2:
@@ -144,6 +152,10 @@ def sim_experiment(ppnr=1, ntrials=640, nswitch=7):
 
 
 
+#%% ~~ Models ~~ %%#
+####################
+
+
 #%% ~~ Models (1 cue) ~~ %%#
 #--------------------------#
 
@@ -151,8 +163,10 @@ def sim_experiment(ppnr=1, ntrials=640, nswitch=7):
 # ~~ Rescorla - Wagner ~~ #
 def simRW_1c(parameters, data):
     """
-    Rescorla - Wagner learning model with SoftMax
-    Policy calculations in model.
+    Daphne the delta learner
+    The Rescorla - Wagner learning model with SoftMax. The policy calculations
+    are part of the function (and not a separate function). Only the cue
+    estimate of the selected cue is updated.
 
     Parameters
     ----------
@@ -161,12 +175,12 @@ def simRW_1c(parameters, data):
         Second parameter is constant in action selection method.
         The default is (0.01, 0.5).
     data : pandas.DataFrame
-        Experimental structure.
+        Dataframe containing the structure of the experiment.
 
     Returns
     -------
     simData : pandas.DataFrame
-        Contains columns of 'data' and:
+        Contains columns of 'data' and simulated behaviour of Daphne:
             0. 'selCue_RW' - selected cue by the Rescorla-Wagner model
             1. 'rt_RW' - response time
             2. 'reward_RW' - reward based on cue selected by Rescorla-Wagner
@@ -195,7 +209,7 @@ def simRW_1c(parameters, data):
     Q_est = np.full((n_trials, N_CUES), 1/N_CUES)
     
     # Policy
-    ## Selected cues
+    ## Selected cue
     selcue = np.nan
 
     # Trial loop
@@ -232,7 +246,7 @@ def simRW_1c(parameters, data):
         
         # Reward calculations
         ## Based on validity
-        ##AM: If cue==target reward =1, if cue!=target reward = 0
+        ##AM: If cue==target reward = 1, if cue!=target reward = 0
         reward = int(selcue == trial.targetLoc)
         simDict['reward_RW'].append(reward)
         
@@ -257,6 +271,7 @@ def simRW_1c(parameters, data):
     
     # Save data
     simData = pd.DataFrame(simDict, columns=var_list)
+    ## Correct indexes
     simData.reset_index(drop=True, inplace=True)
     data.reset_index(drop=True, inplace=True)
     simData = pd.concat([data, simData], axis=1)
@@ -267,8 +282,10 @@ def simRW_1c(parameters, data):
 # ~~ RW-PH Hybrid ~~ #
 def simHybrid_1c(parameters, data, salpha=0.01):
     """
-    RW-PH hybrid model with SoftMax
-    Policy calculations in model.
+    Hugo the hybrid learner
+    The RW-PH hybrid learning model with SoftMax. The policy calculations
+    are part of the function (and not a separate function). Only the cue
+    estimate of the selected cue is updated.
 
     Parameters
     ----------
@@ -277,14 +294,14 @@ def simHybrid_1c(parameters, data, salpha=0.01):
         Second parameter is constant in action selection method.
         The default is (0.01, 0.5).
     data : pandas.DataFrame
-        Experimental structure.
+        Dataframe containing the structure of the experiment.
     salpha : TYPE, optional
         Start of alpha. The default is 0.01.
 
     Returns
     -------
     simData : pandas.DataFrame
-        Contains columns of 'data' and:
+        Contains columns of 'data' and simulated behaviour of Hugo:
             0. 'selCue_hyb' - selected cue by the hybrid model
             1. 'rt_hyb' - response time
             2. 'reward_hyb' - reward based on cue selected by hybrid model
@@ -317,7 +334,7 @@ def simHybrid_1c(parameters, data, salpha=0.01):
     Q_est = np.full((n_trials, N_CUES), 1/N_CUES)
     
     # Policy
-    ## Selected cues
+    ## Selected cue
     selcue = np.nan
 
     # Trial loop
@@ -353,7 +370,7 @@ def simHybrid_1c(parameters, data, salpha=0.01):
         
         # Reward calculations
         ## Based on validity
-        ##AM: If cue==target reward =1, if cue!=target reward = 0
+        ##AM: If cue==target reward = 1, if cue!=target reward = 0
         reward = int(selcue == trial.targetLoc)
         simDict['reward_hyb'].append(reward)
         
@@ -387,6 +404,7 @@ def simHybrid_1c(parameters, data, salpha=0.01):
     
     # Save data
     simData = pd.DataFrame(simDict, columns=var_list)
+    ## Correct indexes
     simData.reset_index(drop=True, inplace=True)
     data.reset_index(drop=True, inplace=True)
     simData = pd.concat([data, simData], axis=1)
@@ -402,8 +420,10 @@ def simHybrid_1c(parameters, data, salpha=0.01):
 # ~~ Rescorla - Wagner ~~ #
 def simRW_2c(parameters, data):
     """
-    Rescorla - Wagner learning model with SoftMax
-    Both cue estimates are being updated.
+    Daphne the delta learner
+    The Rescorla - Wagner learning model with SoftMax. The policy calculations
+    are part of the function (and not a separate function). The cue
+    estimates of both cues are updated.
 
     Parameters
     ----------
@@ -412,12 +432,12 @@ def simRW_2c(parameters, data):
         Second parameter is constant in action selection method.
         The default is (0.01, 0.5).
     data : pandas.DataFrame
-        Experimental structure.
+        Dataframe containing the structure of the experiment.
 
     Returns
     -------
     simData : pandas.DataFrame
-        Contains columns of 'data' and:
+        Contains columns of 'data' and simulated behaviour of Daphne:
             0. 'selCue_RW' - selected cue by the Rescorla-Wagner model
             1. 'rt_RW' - response time
             2. 'reward_RW' - reward based on cue selected by Rescorla-Wagner
@@ -446,7 +466,7 @@ def simRW_2c(parameters, data):
     Q_est = np.full((n_trials, N_CUES), 1/N_CUES)
     
     # Policy
-    ## Selected cues
+    ## Selected cue
     selcue = np.nan
 
     # Trial loop
@@ -483,7 +503,7 @@ def simRW_2c(parameters, data):
         
         # Reward calculations
         ## Based on validity
-        ##AM: If cue==target reward =1, if cue!=target reward = 0
+        ##AM: If cue==target reward = 1, if cue!=target reward = 0
         reward = int(selcue == trial.targetLoc)
         simDict['reward_RW'].append(reward)
         
@@ -509,6 +529,7 @@ def simRW_2c(parameters, data):
     
     # Save data
     simData = pd.DataFrame(simDict, columns=var_list)
+    ## Correct indexes
     simData.reset_index(drop=True, inplace=True)
     data.reset_index(drop=True, inplace=True)
     simData = pd.concat([data, simData], axis=1)
@@ -517,10 +538,12 @@ def simRW_2c(parameters, data):
 
 
 # ~~ RW-PH Hybrid ~~ #
-def sulHybrid_2c(parameters, data, salpha=0.01):
+def simHybrid_2c(parameters, data, salpha=0.01):
     """
-    RW-PH hybrid model with SoftMax
-    Both cue estimates are being updated.
+    Hugo the hybrid learner
+    The RW-PH hybrid learning model with SoftMax. The policy calculations
+    are part of the function (and not a separate function). The cue
+    estimates of both cues are updated.
 
     Parameters
     ----------
@@ -529,14 +552,14 @@ def sulHybrid_2c(parameters, data, salpha=0.01):
         Second parameter is constant in action selection method.
         The default is (0.01, 0.5).
     data : pandas.DataFrame
-        Experimental structure.
+        Dataframe containing the structure of the experiment.
     salpha : TYPE, optional
         Start of alpha. The default is 0.01.
 
     Returns
     -------
     simData : pandas.DataFrame
-        Contains columns of 'data' and:
+        Contains columns of 'data' and simulated behaviour of Hugo:
             0. 'selCue_hyb' - selected cue by the hybrid model
             1. 'rt_hyb' - response time
             2. 'reward_hyb' - reward based on cue selected by hybrid model
@@ -569,7 +592,7 @@ def sulHybrid_2c(parameters, data, salpha=0.01):
     Q_est = np.full((n_trials, N_CUES), 1/N_CUES)
     
     # Policy
-    ## Selected cues
+    ## Selected cue
     selcue = np.nan
 
     # Trial loop
@@ -605,7 +628,7 @@ def sulHybrid_2c(parameters, data, salpha=0.01):
         
         # Reward calculations
         ## Based on validity
-        ##AM: If cue==target reward =1, if cue!=target reward = 0
+        ##AM: If cue==target reward = 1, if cue!=target reward = 0
         reward = int(selcue == trial.targetLoc)
         simDict['reward_hyb'].append(reward)
         
@@ -640,11 +663,187 @@ def sulHybrid_2c(parameters, data, salpha=0.01):
     
     # Save data
     simData = pd.DataFrame(simDict, columns=var_list)
+    ## Correct indexes
     simData.reset_index(drop=True, inplace=True)
     data.reset_index(drop=True, inplace=True)
     simData = pd.concat([data, simData], axis=1)
 
     return simData
+
+
+
+#%% ~~ Controle models ~~ %%#
+#---------------------------#
+
+
+# ~~ Wilhelm ~~ #
+def simWSLS(data):
+    """
+    Wilhelm the Win-stay-lose-shift model
+    Selects the cue that was predictive during its previous presentation.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Dataframe containing the structure of the experiment.
+
+    Returns
+    -------
+    simData : pd.DataFrame
+        Contains columns of 'data' and simulated behaviour of Wilhelm:
+            0. 'selCue_W' - selected cue by the WSLS model
+            1. 'reward_W' - reward based on cue selected by WSLS model
+
+    """
+
+
+    # Variables
+    # ---------
+    # Dataframe
+    var_list = ['selCue_W', 'reward_W']
+    simDict = {vari:[] for vari in var_list}
+    
+    # Model
+    ## Number of trials
+    n_trials = data.shape[0]
+    ## Number of cues
+    N_CUES = 2
+    ## Reward
+    reward = np.nan
+    ## Selected cues
+    selcues = np.full((n_trials, ), np.nan)
+
+    # Trial loop
+    for triali, trial in data.iterrows():
+        # Policy
+        #-------
+        ## Random for first trial
+        if triali == 0:
+            selcues[triali] = np.random.randint(N_CUES)
+        else:
+            if reward == 1:
+                selcues[triali] = selcues[triali - 1]
+            else:
+                selcues[triali] = 1 - selcues[triali - 1]
+        # Reward calculations
+        ## Based on validity
+        ##AM: If cue==target reward = 1, if cue!=target reward = 0
+        reward = int(selcues[triali] == trial.targetLoc)
+        
+        simDict['selCue_W'].append(selcues[triali])
+        simDict['reward_W'].append(reward)
+    
+    # Save data
+    simData = pd.DataFrame(simDict, columns=var_list)
+    ## Correct indexes
+    simData.reset_index(drop=True, inplace=True)
+    data.reset_index(drop=True, inplace=True)
+    
+    simData = pd.concat([data, simData], axis=1)
+
+    # Output dataframe
+    return simData
+
+
+# ~~ Renee ~~ #
+def simRandom(data):
+    """
+    Renee the random model
+    Random cue selection.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Dataframe containing the structure of the experiment.
+
+    Returns
+    -------
+    simData : pd.DataFrame
+        Contains columns of 'data' and simulated behaviour of Renee:
+            0. 'selCue_R' - selected cue by the random model
+            1. 'reward_R' - reward based on cue selected by random model
+
+    """
+
+
+    # Variables
+    # ---------
+    # Dataframe
+    var_list = ['selCue_R', 'reward_R']
+    simDict = {vari:[] for vari in var_list}
+    
+    # Number of cues
+    N_CUES = 2
+
+    # Trial loop
+    for triali, trial in data.iterrows():
+        selcue = np.random.randint(N_CUES)
+        simDict['selCue_R'].append(selcue)
+        reward = int(selcue == trial.targetLoc)
+        simDict['reward_R'].append(reward)
+    
+    # Save data
+    simData = pd.DataFrame(simDict, columns=var_list)
+    ## Correct indexes
+    simData.reset_index(drop=True, inplace=True)
+    data.reset_index(drop=True, inplace=True)
+    
+    simData = pd.concat([data, simData], axis=1)
+
+    # Output dataframe
+    return simData
+
+
+
+#%% ~~ Others ~~ %%#
+####################
+
+
+def sim_negLL(thetas, data):
+    """
+    Negative log-likelihood of choice based on RW predictions of simulations
+
+    Parameters
+    ----------
+    thetas : TYPE
+        DESCRIPTION.
+    data : pd.DataFrame
+        Prepared data of simulation, containing structure of experiment.
+        Doesn't need to go through rescon first.
+
+    Returns
+    -------
+    Negative log-likelihood of selected stimuli during a block.
+
+    """
+
+
+    # # Rename reward_RW for ppRW
+    # data = data.rename(columns={'reward_RW':'reward'})
+    # # Number of trials
+    # N_TRIALS = data['TrialID'].max() + 1
+    # # Simulate data with RW model
+    # ppDaphne = simRW_1c(thetas, data)
+    # # Likelihood of choice to pick left stimulus, as estimated by the model
+    # like_choice = ppDaphne['Prob_choice']
+    # # Log-likelihood of choice
+    # loglik_of_choice = []
+    
+    
+    # for triali in range(N_TRIALS):
+    #     # Model estimated value of model's selected stimulus
+    #     ##SG: Likelihood of left stimulus if model picked left.
+    #         # Otherwise 1-left for likelihood of right stimulus.
+    #     if data['Key'][triali] == 102:  # f
+    #         picked_choice = like_choice[triali]
+    #     else:
+    #         picked_choice = 1 - like_choice[triali]
+        
+    #     loglik_of_choice.append(np.log(picked_choice))
+
+    # Return negative log likelihood
+    # return -1 * np.nansum(loglik_of_choice)
+    # return np.nansum(loglik_of_choice)
 
 
 
