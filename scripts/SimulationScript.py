@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Thesis Data Simulation -- Version 2.0
-Last edit:  2022/03/21
+"""     Thesis Data Simulation -- Version 3
+Last edit:  2022/06/16
 Author(s):  Geysen, Steven (01611639; SG)
 Notes:      - Based on the scripts in Ch6 of Modeling of Cognitive
                 Processes (2020) and the data from Marzecova et al. (2019)
-            - 4 spaces for tabs
             - Release notes:
                 * New beginings
                 * Simulations only
@@ -80,7 +79,8 @@ os.chdir(SaveDataDir)
 ######################
 
 
-def ppSim(params=(0.1, 20), w0=0.5, ntrials=640, nstim=2, nswitch=7, ppnr=1, model='RW', file_name=''):
+def sim_experiment(params=(0.1, 20), w0=0.5, ntrials=640, nstim=2, nswitch=7,
+                   ppnr=1, model='RW', file_name=''):
     """
     Simulate data for/with the learning model.
     Simulates RT with an ex-Gaussian distribution as a function of PE.
@@ -153,6 +153,7 @@ def ppSim(params=(0.1, 20), w0=0.5, ntrials=640, nstim=2, nswitch=7, ppnr=1, mod
         'Cue_2 pe', 'RT'
         ]
     dataDict = {keyi: [] for keyi in column_list}
+    dataDict['id'] = ppnr
     data = pd.DataFrame(columns=column_list)
 
 
@@ -196,22 +197,23 @@ def ppSim(params=(0.1, 20), w0=0.5, ntrials=640, nstim=2, nswitch=7, ppnr=1, mod
 
     # Trial loop
     #-----------
-    for trial in range(ntrials):
+    for triali in range(ntrials):
+        dataDict['trial'] = triali
         # Switch probabilities
         if switch.shape[0] != 0:
-            if trial == switch[0]:
+            if triali == switch[0]:
                 relCueCol = 1 - relCueCol
                 
                 if ppnr % 2 == 0:
                     ## For participants with an even number is in the
                     ## second half of trials the probability
                     ## of the relevant cue 0.85
-                    if trial >= ntrials / 2:
+                    if triali >= ntrials / 2:
                         prob[relCueCol] = 0.85
                     else:
                         prob[relCueCol] = 0.7
                 else:
-                    if trial >= ntrials / 2:
+                    if triali >= ntrials / 2:
                         prob[relCueCol] = 0.7
                     else:
                         prob[relCueCol] = 0.85
@@ -225,13 +227,13 @@ def ppSim(params=(0.1, 20), w0=0.5, ntrials=640, nstim=2, nswitch=7, ppnr=1, mod
         # Action selection methods
         #-------------------------
         ## Random for first trial
-        if trial == 0:
+        if triali == 0:
             selCue = np.random.randint(nstim)
         ## SoftMax in following trials
         else:
             ## Probabilities of the cues
-            pc[relCueCol] = np.exp(params[1] * Q_est[trial, relCueCol]) / np.sum(np.exp(params[1] * Q_est[trial, :]))
-            pc[1 - relCueCol] = np.exp(params[1] * Q_est[trial, 1 - relCueCol]) / np.sum(np.exp(params[1] * Q_est[trial, :]))
+            pc[relCueCol] = np.exp(params[1] * Q_est[triali, relCueCol]) / np.sum(np.exp(params[1] * Q_est[triali, :]))
+            pc[1 - relCueCol] = np.exp(params[1] * Q_est[triali, 1 - relCueCol]) / np.sum(np.exp(params[1] * Q_est[triali, :]))
             ## SG: If prob of cue 0 is smaller than a random value
                 ## between 0 and 1, follow cue 1.
             temp = np.random.rand() <= pc[relCueCol]
@@ -250,17 +252,17 @@ def ppSim(params=(0.1, 20), w0=0.5, ntrials=640, nstim=2, nswitch=7, ppnr=1, mod
         
         # Update rules
         #-------------
-        pe[selCue] = reward[selCue] - Q_est[trial, selCue]
+        pe[selCue] = reward[selCue] - Q_est[triali, selCue]
         # Rescorla-Wagner
         if model.upper() == 'RW':
-            Q_est[trial + 1, selCue] = Q_est[trial, selCue] + params[0] * pe[selCue]
+            Q_est[triali + 1, selCue] = Q_est[triali, selCue] + params[0] * pe[selCue]
         
         # RW-PH hybrid
         elif model.upper() == 'HYBRID':
-            alpha[trial + 1, selCue] = params[0] * np.abs(pe[selCue]) + (1 - params[0] * alpha[trial, selCue])
-            Q_est[trial + 1, selCue] = Q_est[trial, selCue] + alpha[trial, selCue] * pe[selCue]
+            alpha[triali + 1, selCue] = params[0] * np.abs(pe[selCue]) + (1 - params[0] * alpha[triali, selCue])
+            Q_est[triali + 1, selCue] = Q_est[triali, selCue] + alpha[triali, selCue] * pe[selCue]
         
-        Q_est[trial + 1, 1 - selCue] = Q_est[trial, 1 - selCue]
+        Q_est[triali + 1, 1 - selCue] = Q_est[triali, 1 - selCue]
         
         # Reaction time
         try:
@@ -270,7 +272,7 @@ def ppSim(params=(0.1, 20), w0=0.5, ntrials=640, nstim=2, nswitch=7, ppnr=1, mod
         except:
             RT = np.nan
             print(f'Without cutoff {pe[selCue]}')
-            print(f'trial {trial}')
+            print(f'trial {triali}')
             print(reward[stim[selCue]])
             print(Q_est[stim[selCue]])
         
@@ -280,7 +282,7 @@ def ppSim(params=(0.1, 20), w0=0.5, ntrials=640, nstim=2, nswitch=7, ppnr=1, mod
         # DataFrame
         #----------
         ## 'id', 'trial', 'relCue', 'irrelCue', 'relCueCol', 'targetLoc', 'choice', 'Reward', 'Cue_1 est', 'Cue_2 est', 'Cue_1 pe', 'Cue_2 pe', 'RT'
-        data.loc[trial] = [ppnr, trial, stim[relCueCol], stim[1 - relCueCol], relCueCol, target, selCue, reward[selCue], Q_est[trial, 0], Q_est[trial, 1] , pe[0], pe[1], RT]
+        data.loc[triali] = [ppnr, triali, stim[relCueCol], stim[1 - relCueCol], relCueCol, target, selCue, reward[selCue], Q_est[triali, 0], Q_est[triali, 1] , pe[0], pe[1], RT]
         
     ## Prediction error of selected cue
     data['selPE'] = np.where(data['Choice'] == 0, data['Cue_1 pe'], data['Cue_2 pe'])
@@ -337,8 +339,8 @@ for alphai, alpha in enumerate(alphaOptions):
             print(pp, beta, alpha)
             
             # New simulated dataframe
-            newSim = ppSim(params = x0, ppnr = pp, model = sim_model,
-                                  file_name = f'alpha_{alpha}_beta_{beta}_nsim{pp}')
+            newSim = sim_experiment(params = x0, ppnr = pp, model = sim_model,
+                                    file_name = f'alpha_{alpha}_beta_{beta}_nsim{pp}')
             wocmeanpe[pp + (alphai * N_SIMS), betai] = np.nanmean(newSim['selPE'])
             wocmeanrt[pp + (alphai * N_SIMS), 0, betai] = np.nanmean(newSim['RT'])
             wocmeanrt[pp + (alphai * N_SIMS), 1, betai] = np.nanmean(newSim['RT valid'])
