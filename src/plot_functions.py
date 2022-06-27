@@ -89,12 +89,6 @@ def heatmap(data, row_labels, col_labels, ax=None, cbar_kw={},
     plt.setp(ax.get_xticklabels(), rotation=-90, ha="right",
              rotation_mode="anchor")
     
-    # Turn spines off and create white grid.
-    ax.spines[:].set_visible(False)
-    
-    # ax.set_xticks(np.arange(data.shape[1]+1)-.5, minor=True)
-    # ax.set_yticks(np.arange(data.shape[0]+1)-.5, minor=True)
-    # ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
     ax.tick_params(which="minor", bottom=False, left=False)
 
     return im, cbar
@@ -158,6 +152,59 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
             texts.append(text)
 
     return texts
+
+
+# # Sanity checks
+# ## Selection plot
+# plt.figure(plotnr)
+# plt.title(f'Cue selection iteration {pp} / {x0[0]} / {x0[1]}')
+#     ## Cue estimates
+# plt.plot(newSim[['Cue_1 pe']], label = 'Cue 1')
+# plt.plot(newSim[['Cue_2 pe']], label = 'Cue 2')
+#     ## Selected cue
+# plt.plot(newSim[['Choice']], label = 'Selected cue')
+#     ## True cue
+# plt.plot(newSim[['relCueCol']], label = 'True cue', linestyle = '-.')
+#     ## Legend
+# plt.legend()
+
+# plt.show()
+# plotnr += 1
+
+# ## Validity effect
+# print(f" max RT {np.max(newSim['RT'])}")
+# print(f" min RT {np.min(newSim['RT'])}")
+# ### Boxplots
+# plt.figure(plotnr)
+# newSim.boxplot(column = ['RT valid', 'RT invalid'])
+# plt.show()
+# plotnr += 1
+# plt.figure(plotnr)
+# newSim.boxplot(column = ['PE valid', 'PE invalid'])
+
+# plt.show()
+# plotnr += 1
+
+# ## RT distribution plot
+# plt.figure(plotnr)
+# plt.hist(newSim[['RT valid']], bins = 30, alpha = 0.5, label='Valid')
+# plt.hist(newSim[['RT invalid']], bins = 30, alpha = 0.5, label='Invalid')
+# plt.legend()
+
+# plt.show()
+# plotnr += 1
+
+
+# plt.figure(plotnr)
+# fig, ((ax0, ax1)) = plt.subplots(nrows = 1, ncols = 2)
+# ax0.hist(newSim[['RT valid']], bins = 30)
+# ax0.set_title('RT valid')
+# fig.suptitle(f'RT distribution pp {pp + 1}, simulation {pp + 1} ({x0})', fontsize=14)
+# ax1.hist(newSim[['RT invalid']], bins = 30)
+# ax1.set_title('RT invalid')
+
+# plt.show()
+# plotnr += 1
 
 
 

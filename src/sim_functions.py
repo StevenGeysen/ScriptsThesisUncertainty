@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Simulation functions -- Version 2
+"""     Simulation functions -- Version 2.1
 Last edit:  2022/06/27
 Author(s):  Geysen, Steven (SG)
 Notes:      - Functions used for the simulation of the task used by
@@ -12,11 +12,10 @@ Notes:      - Functions used for the simulation of the task used by
                 * Random (Renee)
             - Release notes:
                 * (negative) log likelihood
+                * Fixed SoftMax
             
-To do:      - Implement in other scripts
-            - Argmax
-            - (negative) log likelihood
-                * Add all models
+To do:      - Argmax
+            - Probability of Wilhelm
             
 Comments:   SG: Simulations return pandas.DataFrame. Model functions return
                 originale data with model selection appended.
@@ -107,7 +106,7 @@ def sim_experiment(simnr=1, ntrials=640, nswitch=7):
     # Trial loop
     #-----------
     for triali in range(ntrials):
-        dataDict['trial'] = triali
+        dataDict['trial'].append(triali)
         # Switch probabilities
         if switch.shape[0] != 0:
             if triali == switch[0]:
@@ -223,8 +222,8 @@ def simRW_1c(parameters, data):
             probcue = 0.5
         else:
             ## Probability of cue 0
-            probcue = np.exp(parameters[1] * Q_est[triali, 0]) / \
-                np.sum(np.exp(np.multiply(parameters[1], Q_est[triali, :])))
+            probcue = np.exp(parameters[1] * Q_est[triali - 1, 0]) / \
+                np.sum(np.exp(np.multiply(parameters[1], Q_est[triali - 1, :])))
             ##SG: If the probability of cue 0 is smaller than a random value,
                 # follow cue 1.
             temp = np.random.rand() <= probcue
@@ -349,8 +348,8 @@ def simHybrid_1c(parameters, data, salpha=0.01):
             probcue = 0.5
         else:
             ## Probability of cue 0
-            probcue = np.exp(parameters[1] * Q_est[triali, 0]) / \
-                np.sum(np.exp(np.multiply(parameters[1], Q_est[triali, :])))
+            probcue = np.exp(parameters[1] * Q_est[triali - 1, 0]) / \
+                np.sum(np.exp(np.multiply(parameters[1], Q_est[triali - 1, :])))
             ##SG: If the probability of cue 0 is smaller than a random value,
                 # follow cue 1.
             temp = np.random.rand() <= probcue
@@ -484,8 +483,8 @@ def simRW_2c(parameters, data):
             probcue = 0.5
         else:
             ## Probability of cue 0
-            probcue = np.exp(parameters[1] * Q_est[triali, 0]) / \
-                np.sum(np.exp(np.multiply(parameters[1], Q_est[triali, :])))
+            probcue = np.exp(parameters[1] * Q_est[triali - 1, 0]) / \
+                np.sum(np.exp(np.multiply(parameters[1], Q_est[triali - 1, :])))
             ##SG: If the probability of cue 0 is smaller than a random value,
                 # follow cue 1.
             temp = np.random.rand() <= probcue
@@ -611,8 +610,8 @@ def simHybrid_2c(parameters, data, salpha=0.01):
             probcue = 0.5
         else:
             ## Probability of cue 0
-            probcue = np.exp(parameters[1] * Q_est[triali, 0]) / \
-                np.sum(np.exp(np.multiply(parameters[1], Q_est[triali, :])))
+            probcue = np.exp(parameters[1] * Q_est[triali - 1, 0]) / \
+                np.sum(np.exp(np.multiply(parameters[1], Q_est[triali - 1, :])))
             ##SG: If the probability of cue 0 is smaller than a random value,
                 # follow cue 1.
             temp = np.random.rand() <= probcue
@@ -841,16 +840,20 @@ def sim_negLL(thetas, data, model):
     # Log-likelihood of choice
     loglik_of_choice = []
     # Simulate data
-    simData = simRW_1c(thetas, data)
+    modelDict = {'RW': simRW_1c,
+                 'HYB': simHybrid_1c,
+                 'W': simWSLS,
+                 'R': simRandom}
+    if model.upper() in ['RW', 'HYB']:
+        simData = modelDict[model.upper()](thetas, data)
+    else:
+        simData = modelDict[model.upper()](data)
     
-    for triali, trial in simData.iterrows():
+    for _, trial in simData.iterrows():
         # Model estimated value of model's selected stimulus
         ##SG: Likelihood of left stimulus if model picked left.
             # Otherwise 1-left for likelihood of right stimulus.
-        if trial.selCue_RW == 1:
-            picked_prob = 1 - trial.prob_RW
-        else:
-            picked_prob = trial.prob_RW
+        picked_prob = abs(trial[f'selCue_{model}'] - trial[f'prob_{model}'])
         loglik_of_choice.append(np.log(picked_prob))
 
     # Return negative log likelihood
