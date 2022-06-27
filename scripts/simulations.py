@@ -5,10 +5,9 @@ Last edit:  2022/06/27
 Author(s):  Geysen, Steven (SG)
 Notes:      - Simulations of the task used by Marzecova et al. (2019)
             - Release notes:
-                * Grid search
+                * Fixed grid search
                 
-To do:      - Fix grid search
-            - Nelder-Mead
+To do:      - Nelder-Mead
             - Explore models
 Questions:  
             
@@ -69,7 +68,7 @@ beta_options = np.linspace(0.1, 20, 40)
 
 for simi in range(N_SIMS):
     # Create experimental structure
-    exStruc = sf.sim_experiment(ppnr=simi)
+    exStruc = sf.sim_experiment(simnr=simi)
     
     # Sample data
     ## Select random alpha and beta
@@ -124,9 +123,9 @@ for simi, filei in enumerate(simList, start=1):
     
     print(f'Duration sim {simi}: {round((time.time() - start_sim) / 60, 2)} minutes')
     
-    if simi % 10 == 0:
+    if simi % 2 == 0:
         plt.figure(plotnr)
-        fig, ax = plt.subplots(1,1)
+        fig, ax = plt.subplots()
         im, _ = pf.heatmap(np.rot90(one_totsim_log), np.round(plotbetas, 3),
                     np.round(alpha_options, 3), ax=ax,
                     row_name='$\u03B2$', col_name='$\u03B1$',
