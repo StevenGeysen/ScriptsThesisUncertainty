@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Plot functions -- Version 1
-Last edit:  2022/06/27
+"""     Plot functions -- Version 1.2
+Last edit:  2022/06/28
 Author(s):  Geysen, Steven (SG)
 Notes:      - Functions used to plot output
                 * Heatmap
+                * Sanity checks
+                    - Selection plot
+                    - RT distributions
             - Release notes:
-                * Heatmap
+                * Sanity checks
             
 To do:      - Implement in other scripts
             - Add functions of other often used plots
+            - Test sanity plots
             
 Comments:   
             
@@ -25,6 +29,19 @@ import matplotlib
 
 import numpy as np
 import matplotlib.pyplot as plt
+
+
+
+#%% ~~ Support ~~ %%#
+#-------------------#
+
+
+def modelDict():
+
+    return {'RW': 'Rescorla-Wagner',
+            'H': 'RW-PH Hybrid',
+            'W': 'WSLS',
+            'R': 'Random'}
 
 
 
@@ -59,7 +76,6 @@ def heatmap(data, row_labels, col_labels, ax=None, cbar_kw={},
         The name for the x-axis.
     **kwargs
         All other arguments are forwarded to `imshow`.
-
     """
 
     if not ax:
@@ -120,7 +136,6 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
     **kwargs
         All other arguments are forwarded to each call to `text` used to create
         the text labels.
-
     """
 
     if not isinstance(data, (list, np.ndarray)):
@@ -154,57 +169,123 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
     return texts
 
 
-# # Sanity checks
-# ## Selection plot
-# plt.figure(plotnr)
-# plt.title(f'Cue selection iteration {pp} / {x0[0]} / {x0[1]}')
-#     ## Cue estimates
-# plt.plot(newSim[['Cue_1 pe']], label = 'Cue 1')
-# plt.plot(newSim[['Cue_2 pe']], label = 'Cue 2')
-#     ## Selected cue
-# plt.plot(newSim[['Choice']], label = 'Selected cue')
-#     ## True cue
-# plt.plot(newSim[['relCueCol']], label = 'True cue', linestyle = '-.')
-#     ## Legend
-# plt.legend()
 
-# plt.show()
-# plotnr += 1
-
-# ## Validity effect
-# print(f" max RT {np.max(newSim['RT'])}")
-# print(f" min RT {np.min(newSim['RT'])}")
-# ### Boxplots
-# plt.figure(plotnr)
-# newSim.boxplot(column = ['RT valid', 'RT invalid'])
-# plt.show()
-# plotnr += 1
-# plt.figure(plotnr)
-# newSim.boxplot(column = ['PE valid', 'PE invalid'])
-
-# plt.show()
-# plotnr += 1
-
-# ## RT distribution plot
-# plt.figure(plotnr)
-# plt.hist(newSim[['RT valid']], bins = 30, alpha = 0.5, label='Valid')
-# plt.hist(newSim[['RT invalid']], bins = 30, alpha = 0.5, label='Invalid')
-# plt.legend()
-
-# plt.show()
-# plotnr += 1
+#%% ~~ Sanity checks ~~ %%#
+###########################
 
 
-# plt.figure(plotnr)
-# fig, ((ax0, ax1)) = plt.subplots(nrows = 1, ncols = 2)
-# ax0.hist(newSim[['RT valid']], bins = 30)
-# ax0.set_title('RT valid')
-# fig.suptitle(f'RT distribution pp {pp + 1}, simulation {pp + 1} ({x0})', fontsize=14)
-# ax1.hist(newSim[['RT invalid']], bins = 30)
-# ax1.set_title('RT invalid')
+# ~~ Selection plot ~~ #
+def selplot(data, model, thetas, plotnr, pp=''):
+    """
+    Plot cue selection of model
 
-# plt.show()
-# plotnr += 1
+    Parameters
+    ----------
+    data : pandas.DataFrame
+        Dataframe containing the structure of the experiment and model
+        behaviour.
+    model : string
+        Name of the used model:
+            RW - Rescorla-Wagner
+            H - RW-PH hybrid
+            W - Win-stay-lose-shift
+            R - Random
+    thetas : list, array, tuple
+        Parameter values.
+    plotnr : int
+        Plot number.
+    pp : int, optional
+        Number of the participant or simulation. The default is ''.
+
+    Returns
+    -------
+    None.
+    """
+
+
+    plt.figure(plotnr)
+    # Set title
+    models = modelDict()
+    if not model.upper() in ['R', 'W']:
+        if model.upper() == 'RW':
+            title = f'Cue selection {pp} {models[model.upper()]}: \
+                    $\u03B1$ = {thetas[0]}; $\u03B2$ = {thetas[1]}'
+        else:
+            title = f'Cue selection {pp} {models[model.upper()]}: \
+                    $\u03B1$ = {thetas[0]}; $\u03B7$ = {thetas[1]}'
+    # Cue estimates
+        plt.plot(data[[f'Qest_0_{model.upper()}']], label = 'Cue 0')
+        plt.plot(data[[f'Qest_1_{model.upper()}']], label = 'Cue 1')
+    else:
+        title = f'Cue selection {pp} {models[model.upper()]}'
+    plt.title(title)
+    
+    # Selected cue
+    plt.plot(data[[f'selCue_{model.upper()}']], label = 'Selected cue')
+    # True cue
+    plt.plot(data[['relCueCol']], label = 'True cue', linestyle = '-.')
+    
+    plt.legend()
+
+    plt.show()
+
+
+# ~~ RT distribution plot ~~ #
+def rt_dist(data, model, thetas, plotnr, pp=''):
+    """
+    Plot distributions of response times, simulated by the model
+
+    Parameters
+    ----------
+    data : pandas.DataFrame
+        Dataframe containing the structure of the experiment and model
+        behaviour.
+    model : string
+        Name of the used model:
+            RW - Rescorla-Wagner
+            H - RW-PH hybrid
+    thetas : list, array, tuple
+        Parameter values.
+    plotnr : int
+        Plot number.
+    pp : int, optional
+        Number of the participant or simulation. The default is ''.
+
+    Returns
+    -------
+    None.
+    """
+
+    # Renee and Wilhelm do not simulate RTs.
+    assert model.upper() in ['RW', 'H'], 'Model has no simulated RT'
+
+    # Response times
+    rt_valid = np.where(data['relCue'] == data['targetLoc'],
+                        data[f'rt_{model.upper()}'], np.nan)
+    rt_invalid = np.where(data['relCue'] != data['targetLoc'],
+                        data[f'rt_{model.upper()}'], np.nan)
+    # Set title
+    models = modelDict()
+    if model.upper() == 'RW':
+        title = f'RT distribution {pp} {models[model.upper()]}: \
+                $\u03B1$ = {thetas[0]}; $\u03B2$ = {thetas[1]}'
+    else:
+        title = f'RT distribution {pp} {models[model.upper()]}: \
+                $\u03B1$ = {thetas[0]}; $\u03B7$ = {thetas[1]}'
+    
+    plt.figure(plotnr)
+    fig, ((ax0, ax1)) = plt.subplots(nrows = 1, ncols = 2)
+    
+    ax0.hist(rt_valid, bins = 30)
+    ax0.set_title('Valid RT (s)')
+    
+    fig.suptitle(title, fontsize=14)
+    
+    ax1.hist(rt_invalid, bins = 30)
+    ax1.set_title('Invalid RT (s)')
+
+    plt.show()
+
 
 
 
