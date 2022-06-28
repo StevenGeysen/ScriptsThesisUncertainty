@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Simulation functions -- Version 2.1
-Last edit:  2022/06/27
+"""     Simulation functions -- Version 2.1.1
+Last edit:  2022/06/28
 Author(s):  Geysen, Steven (SG)
 Notes:      - Functions used for the simulation of the task used by
                 Marzecova et al. (2019). Both structure and models.
@@ -74,9 +74,7 @@ def sim_experiment(simnr=1, ntrials=640, nswitch=7):
             4. 'irrelCue'- direction of the irrelevant cue (0: left / 1: right)
             5. 'targetLoc' - location of the target (0: left / 1: right)
             6. 'validity' - trial validity
-
     """
-
 
     # Variables
     #----------
@@ -187,9 +185,7 @@ def simRW_1c(parameters, data):
             4. 'RPE_RW' - reward prediction error
             5. 'Qest_0_RW' - estimated value of cue 0
             6. 'Qest_1_RW' - estimated value of cue 1
-
     """
-
 
     # Variables
     #----------
@@ -303,24 +299,22 @@ def simHybrid_1c(parameters, data, salpha=0.01):
     -------
     simData : pandas.DataFrame
         Contains columns of 'data' and simulated behaviour of Hugo:
-            0. 'selCue_hyb' - selected cue by the hybrid model
-            1. 'prob_hyb' - probability to select cue 0
-            2. 'rt_hyb' - response time
-            3. 'reward_hyb' - reward based on cue selected by hybrid model
-            4. 'alpha_hyb' - learning rate
-            5. 'RPE_hyb' - reward prediction error
-            6. 'Qest_0_hyb' - estimated value of cue 0
-            7. 'Qest_1_hyb' - estimated value of cue 1
-
+            0. 'selCue_H' - selected cue by the hybrid model
+            1. 'prob_H' - probability to select cue 0
+            2. 'rt_H' - response time
+            3. 'reward_H' - reward based on cue selected by hybrid model
+            4. 'alpha_H' - learning rate
+            5. 'RPE_H' - reward prediction error
+            6. 'Qest_0_H' - estimated value of cue 0
+            7. 'Qest_1_H' - estimated value of cue 1
     """
-
 
     # Variables
     #----------
     # Dataframe
     var_list = [
-        'selCue_hyb', 'prob_hyb', 'rt_hyb', 'reward_hyb', 'alpha_hyb',
-        'RPE_hyb', 'Qest_0_hyb', 'Qest_1_hyb'
+        'selCue_H', 'prob_H', 'rt_H', 'reward_H', 'alpha_H',
+        'RPE_H', 'Qest_0_H', 'Qest_1_H'
         ]
     simDict = {vari:[] for vari in var_list}
     
@@ -355,8 +349,8 @@ def simHybrid_1c(parameters, data, salpha=0.01):
             temp = np.random.rand() <= probcue
             ## Action selection
             selcue = int(temp == 0)
-        simDict['selCue_hyb'].append(selcue)
-        simDict['prob_hyb'].append(probcue)
+        simDict['selCue_H'].append(selcue)
+        simDict['prob_H'].append(probcue)
         
         # Response time
         try:
@@ -369,13 +363,13 @@ def simHybrid_1c(parameters, data, salpha=0.01):
             print('Failed rt sampling')
         if RT == float('inf'):
             RT = 1.7
-        simDict['rt_hyb'].append(RT)
+        simDict['rt_H'].append(RT)
         
         # Reward calculations
         ## Based on validity
         ##AM: If cue==target reward = 1, if cue!=target reward = 0
         reward = int(selcue == trial.targetLoc)
-        simDict['reward_hyb'].append(reward)
+        simDict['reward_H'].append(reward)
         
         # Hybrid
         #-------
@@ -400,10 +394,10 @@ def simHybrid_1c(parameters, data, salpha=0.01):
             # Cue estimates
             Q_est[triali, selcue] = Q_est[triali, selcue] + \
                 alpha[triali, selcue] * rpe
-        simDict['RPE_hyb'].append(rpe)
-        simDict['alpha_hyb'].append(alpha[triali, selcue])
+        simDict['RPE_H'].append(rpe)
+        simDict['alpha_H'].append(alpha[triali, selcue])
         for qi, q_est in enumerate(Q_est[triali, :]):
-            simDict[f'Qest_{qi}_hyb'].append(q_est)
+            simDict[f'Qest_{qi}_H'].append(q_est)
     
     # Save data
     simData = pd.DataFrame(simDict, columns=var_list)
@@ -448,9 +442,7 @@ def simRW_2c(parameters, data):
             4. 'RPE_RW' - reward prediction error
             5. 'Qest_0_RW' - estimated value of cue 0
             6. 'Qest_1_RW' - estimated value of cue 1
-
     """
-
 
     # Variables
     #----------
@@ -565,24 +557,22 @@ def simHybrid_2c(parameters, data, salpha=0.01):
     -------
     simData : pandas.DataFrame
         Contains columns of 'data' and simulated behaviour of Hugo:
-            0. 'selCue_hyb' - selected cue by the hybrid model
-            1. 'prob_hyb' - probability to select cue 0
-            2. 'rt_hyb' - response time
-            3. 'reward_hyb' - reward based on cue selected by hybrid model
-            4. 'alpha_hyb' - learning rate
-            5. 'RPE_hyb' - reward prediction error
-            6. 'Qest_0_hyb' - estimated value of cue 0
-            7. 'Qest_1_hyb' - estimated value of cue 1
-
+            0. 'selCue_H' - selected cue by the hybrid model
+            1. 'prob_H' - probability to select cue 0
+            2. 'rt_H' - response time
+            3. 'reward_H' - reward based on cue selected by hybrid model
+            4. 'alpha_H' - learning rate
+            5. 'RPE_H' - reward prediction error
+            6. 'Qest_0_H' - estimated value of cue 0
+            7. 'Qest_1_H' - estimated value of cue 1
     """
-
 
     # Variables
     #----------
     # Dataframe
     var_list = [
-        'selCue_hyb', 'prob_hyb', 'rt_hyb', 'reward_hyb', 'alpha_hyb',
-        'RPE_hyb', 'Qest_0_hyb', 'Qest_1_hyb'
+        'selCue_H', 'prob_H', 'rt_H', 'reward_H', 'alpha_H',
+        'RPE_H', 'Qest_0_H', 'Qest_1_H'
         ]
     simDict = {vari:[] for vari in var_list}
     
@@ -617,8 +607,8 @@ def simHybrid_2c(parameters, data, salpha=0.01):
             temp = np.random.rand() <= probcue
             ## Action selection
             selcue = int(temp == 0)
-        simDict['selCue_hyb'].append(selcue)
-        simDict['prob_hyb'].append(probcue)
+        simDict['selCue_H'].append(selcue)
+        simDict['prob_H'].append(probcue)
         
         # Response time
         try:
@@ -631,13 +621,13 @@ def simHybrid_2c(parameters, data, salpha=0.01):
             print('Failed rt sampling')
         if RT == float('inf'):
             RT = 1.7
-        simDict['rt_hyb'].append(RT)
+        simDict['rt_H'].append(RT)
         
         # Reward calculations
         ## Based on validity
         ##AM: If cue==target reward = 1, if cue!=target reward = 0
         reward = int(selcue == trial.targetLoc)
-        simDict['reward_hyb'].append(reward)
+        simDict['reward_H'].append(reward)
         
         # Hybrid
         #-------
@@ -663,10 +653,10 @@ def simHybrid_2c(parameters, data, salpha=0.01):
                 # Cue estimates
                 Q_est[triali, cuei] = Q_est[triali, cuei] + \
                     alpha[triali, cuei] * rpe
-        simDict['RPE_hyb'].append(reward - Q_est[triali - 1, selcue])
-        simDict['alpha_hyb'].append(alpha[triali, selcue])
+        simDict['RPE_H'].append(reward - Q_est[triali - 1, selcue])
+        simDict['alpha_H'].append(alpha[triali, selcue])
         for qi, q_est in enumerate(Q_est[triali, :]):
-            simDict[f'Qest_{qi}_hyb'].append(q_est)
+            simDict[f'Qest_{qi}_H'].append(q_est)
     
     # Save data
     simData = pd.DataFrame(simDict, columns=var_list)
@@ -701,9 +691,7 @@ def simWSLS(data):
             0. 'selCue_W' - selected cue by the WSLS model
             1. 'prob_W' - probability to select cue 0
             2. 'reward_W' - reward based on cue selected by WSLS model
-
     """
-
 
     # Variables
     # ---------
@@ -771,9 +759,7 @@ def simRandom(data):
             0. 'selCue_R' - selected cue by the random model
             1. 'prob_R' - probability to select cue 0
             2. 'reward_R' - reward based on cue selected by random model
-
     """
-
 
     # Variables
     # ---------
@@ -815,7 +801,7 @@ def sim_negLL(thetas, data, model):
 
     Parameters
     ----------
-    thetas : list, array
+    thetas : list, array, tuple
         Parameter values.
     data : pd.DataFrame
         Prepared data of simulation, containing structure of experiment.
@@ -823,16 +809,14 @@ def sim_negLL(thetas, data, model):
     model : string
         Name of the used model:
             RW - Rescorla-Wagner
-            hyb - RW-PH hybrid
+            H - RW-PH hybrid
             W - Win-stay-lose-shift
             R - Random
 
     Returns
     -------
     Negative log-likelihood of selected stimuli during a block.
-
     """
-
 
     # Rename to avoid duplicates
     data = data.rename(columns={f'selCue_{model}':'selCue',
@@ -841,10 +825,10 @@ def sim_negLL(thetas, data, model):
     loglik_of_choice = []
     # Simulate data
     modelDict = {'RW': simRW_1c,
-                 'HYB': simHybrid_1c,
+                 'H': simHybrid_1c,
                  'W': simWSLS,
                  'R': simRandom}
-    if model.upper() in ['RW', 'HYB']:
+    if model.upper() in ['RW', 'H']:
         simData = modelDict[model.upper()](thetas, data)
     else:
         simData = modelDict[model.upper()](data)
@@ -853,7 +837,8 @@ def sim_negLL(thetas, data, model):
         # Model estimated value of model's selected stimulus
         ##SG: Likelihood of left stimulus if model picked left.
             # Otherwise 1-left for likelihood of right stimulus.
-        picked_prob = abs(trial[f'selCue_{model}'] - trial[f'prob_{model}'])
+        picked_prob = abs(trial[f'selCue_{model.upper()}'] - 
+                          trial[f'prob_{model}'])
         loglik_of_choice.append(np.log(picked_prob))
 
     # Return negative log likelihood

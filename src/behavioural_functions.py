@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Model functions -- Version 1.1
-Last edit:  2022/06/27
+"""     Model functions -- Version 1.1.1
+Last edit:  2022/06/28
 Author(s):  Geysen, Steven (SG)
 Notes:      - Models for the ananlysis of behavioural data from
                 Marzecova et al. (2019)
@@ -76,9 +76,7 @@ def ppRW_1c(parameters, data):
             4. 'RPE_RW' - reward prediction error
             5. 'Qest_0_RW' - estimated value of cue 0
             6. 'Qest_1_RW' - estimated value of cue 1
-
     """
-
 
     # Variables
     #----------
@@ -192,24 +190,22 @@ def ppHybrid_1c(parameters, data, salpha=0.01):
     -------
     ppData : pandas.DataFrame
         Contains columns of 'data' and simulated behaviour of Hugo:
-            0. 'selCue_hyb' - selected cue by the hybrid model
-            1. 'prob_hyb' - probability to select cue 0
-            2. 'rt_hyb' - response time
-            3. 'reward_hyb' - reward based on cue selected by hybrid model
-            4. 'alpha_hyb' - learning rate
-            5. 'RPE_hyb' - reward prediction error
-            6. 'Qest_0_hyb' - estimated value of cue 0
-            7. 'Qest_1_hyb' - estimated value of cue 1
-
+            0. 'selCue_H' - selected cue by the hybrid model
+            1. 'prob_H' - probability to select cue 0
+            2. 'rt_H' - response time
+            3. 'reward_H' - reward based on cue selected by hybrid model
+            4. 'alpha_H' - learning rate
+            5. 'RPE_H' - reward prediction error
+            6. 'Qest_0_H' - estimated value of cue 0
+            7. 'Qest_1_H' - estimated value of cue 1
     """
-
 
     # Variables
     #----------
     # Dataframe
     var_list = [
-        'selCue_hyb', 'prob_hyb', 'rt_hyb', 'reward_hyb', 'alpha_hyb',
-        'RPE_hyb', 'Qest_0_hyb', 'Qest_1_hyb'
+        'selCue_H', 'prob_H', 'rt_H', 'reward_H', 'alpha_H',
+        'RPE_H', 'Qest_0_H', 'Qest_1_H'
         ]
     ppDict = {vari:[] for vari in var_list}
     
@@ -244,8 +240,8 @@ def ppHybrid_1c(parameters, data, salpha=0.01):
             temp = np.random.rand() <= probcue
             ## Action selection
             selcue = int(temp == 0)
-        ppDict['selCue_hyb'].append(selcue)
-        ppDict['prob_hyb'].append(probcue)
+        ppDict['selCue_H'].append(selcue)
+        ppDict['prob_H'].append(probcue)
         
         # Response time
         try:
@@ -258,13 +254,13 @@ def ppHybrid_1c(parameters, data, salpha=0.01):
             print('Failed rt sampling')
         if RT == float('inf'):
             RT = 1.7
-        ppDict['rt_hyb'].append(RT)
+        ppDict['rt_H'].append(RT)
         
         # Reward calculations
         ## Based on validity
         ##AM: If cue==target reward = 1, if cue!=target reward = 0
         reward = int(selcue == trial.targetLoc)
-        ppDict['reward_hyb'].append(reward)
+        ppDict['reward_H'].append(reward)
         
         # Hybrid
         #-------
@@ -289,10 +285,10 @@ def ppHybrid_1c(parameters, data, salpha=0.01):
             # Cue estimates
             Q_est[triali, selcue] = Q_est[triali, selcue] + \
                 alpha[triali, selcue] * rpe
-        ppDict['RPE_hyb'].append(rpe)
-        ppDict['alpha_hyb'].append(alpha[triali, selcue])
+        ppDict['RPE_H'].append(rpe)
+        ppDict['alpha_H'].append(alpha[triali, selcue])
         for qi, q_est in enumerate(Q_est[triali, :]):
-            ppDict[f'Qest_{qi}_hyb'].append(q_est)
+            ppDict[f'Qest_{qi}_H'].append(q_est)
     
     # Save data
     ppData = pd.DataFrame(ppDict, columns=var_list)
@@ -337,9 +333,7 @@ def ppRW_2c(parameters, data):
             4. 'RPE_RW' - reward prediction error
             5. 'Qest_0_RW' - estimated value of cue 0
             6. 'Qest_1_RW' - estimated value of cue 1
-
     """
-
 
     # Variables
     #----------
@@ -454,24 +448,22 @@ def ppHybrid_2c(parameters, data, salpha=0.01):
     -------
     simData : pandas.DataFrame
         Contains columns of 'data' and simulated behaviour of Hugo:
-            0. 'selCue_hyb' - selected cue by the hybrid model
-            1. 'prob_hyb' - probability to select cue 0
-            2. 'rt_hyb' - response time
-            3. 'reward_hyb' - reward based on cue selected by hybrid model
-            4. 'alpha_hyb' - learning rate
-            5. 'RPE_hyb' - reward prediction error
-            6. 'Qest_0_hyb' - estimated value of cue 0
-            7. 'Qest_1_hyb' - estimated value of cue 1
-
+            0. 'selCue_H' - selected cue by the hybrid model
+            1. 'prob_H' - probability to select cue 0
+            2. 'rt_H' - response time
+            3. 'reward_H' - reward based on cue selected by hybrid model
+            4. 'alpha_H' - learning rate
+            5. 'RPE_H' - reward prediction error
+            6. 'Qest_0_H' - estimated value of cue 0
+            7. 'Qest_1_H' - estimated value of cue 1
     """
-
 
     # Variables
     #----------
     # Dataframe
     var_list = [
-        'selCue_hyb', 'prob_hyb', 'rt_hyb', 'reward_hyb', 'alpha_hyb',
-        'RPE_hyb', 'Qest_0_hyb', 'Qest_1_hyb'
+        'selCue_H', 'prob_H', 'rt_H', 'reward_H', 'alpha_H',
+        'RPE_H', 'Qest_0_H', 'Qest_1_H'
         ]
     ppDict = {vari:[] for vari in var_list}
     
@@ -506,8 +498,8 @@ def ppHybrid_2c(parameters, data, salpha=0.01):
             temp = np.random.rand() <= probcue
             ## Action selection
             selcue = int(temp == 0)
-        ppDict['selCue_hyb'].append(selcue)
-        ppDict['prob_hyb'].append(probcue)
+        ppDict['selCue_H'].append(selcue)
+        ppDict['prob_H'].append(probcue)
         
         # Response time
         try:
@@ -520,13 +512,13 @@ def ppHybrid_2c(parameters, data, salpha=0.01):
             print('Failed rt sampling')
         if RT == float('inf'):
             RT = 1.7
-        ppDict['rt_hyb'].append(RT)
+        ppDict['rt_H'].append(RT)
         
         # Reward calculations
         ## Based on validity
         ##AM: If cue==target reward = 1, if cue!=target reward = 0
         reward = int(selcue == trial.targetLoc)
-        ppDict['reward_hyb'].append(reward)
+        ppDict['reward_H'].append(reward)
         
         # Hybrid
         #-------
@@ -552,10 +544,10 @@ def ppHybrid_2c(parameters, data, salpha=0.01):
                 # Cue estimates
                 Q_est[triali, cuei] = Q_est[triali, cuei] + \
                     alpha[triali, cuei] * rpe
-        ppDict['RPE_hyb'].append(reward - Q_est[triali - 1, selcue])
-        ppDict['alpha_hyb'].append(alpha[triali, selcue])
+        ppDict['RPE_H'].append(reward - Q_est[triali - 1, selcue])
+        ppDict['alpha_H'].append(alpha[triali, selcue])
         for qi, q_est in enumerate(Q_est[triali, :]):
-            ppDict[f'Qest_{qi}_hyb'].append(q_est)
+            ppDict[f'Qest_{qi}_H'].append(q_est)
     
     # Save data
     ppData = pd.DataFrame(ppDict, columns=var_list)
@@ -590,9 +582,7 @@ def ppWSLS(data):
             0. 'selCue_W' - selected cue by the WSLS model
             1. 'prob_W' - probability to select cue 0
             2. 'reward_W' - reward based on cue selected by WSLS model
-
     """
-
 
     # Variables
     # ---------
@@ -660,9 +650,7 @@ def ppRandom(data):
             0. 'selCue_R' - selected cue by the random model
             1. 'prob_R' - probability to select cue 0
             2. 'reward_R' - reward based on cue selected by random model
-
     """
-
 
     # Variables
     # ---------
