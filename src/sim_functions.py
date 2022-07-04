@@ -165,9 +165,27 @@ def policy(asm):
 
 
 def sim_rt(selcue, probcue):
+    """
+    Simulate response times
+    Response times, sampled from ExGaussian distribution. Sigma and mu are
+    taken from exgauss fit of the original data. Tau is the probability of the
+    selected cue, used as proxy for difficulty.
+
+    Parameters
+    ----------
+    selcue : int
+        Selected cue.
+    probcue : float
+        Probability that cue O is selected.
+
+    Returns
+    -------
+    RT : float
+        Simulated response time.
+    """
+
     try:
-        ##SG: K = tau / sigma, loc = mu, scale = sigma. Sigma and mu are
-            # taken from exgauss fit of the original data.
+        ##SG: K = tau / sigma, loc = mu, scale = sigma.
         RT = stats.exponnorm.rvs(K = abs(selcue - probcue) / 0.02635,
                                  loc = 0.3009, scale = 0.02635)
     except:
