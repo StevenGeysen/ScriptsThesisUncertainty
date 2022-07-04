@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Model functions -- Version 1.1.1
-Last edit:  2022/06/28
+"""     Model functions -- Version 2
+Last edit:  2022/07/04
 Author(s):  Geysen, Steven (SG)
 Notes:      - Models for the ananlysis of behavioural data from
                 Marzecova et al. (2019)
@@ -38,22 +38,23 @@ Sources:    https://www.frontiersin.org/articles/10.3389/fpsyg.2018.00612/full
 import numpy as np
 import pandas as pd
 
+import src.assisting_functions as af
+
 from scipy import stats
 
 
 
-#%% ~~ Support ~~ %%#
-#-------------------#
+#%% ~~ Policy ~~ %%#
+####################
 
 
-def funcDict():
+def policy(asm):
+    if asm.upper() == 'ARG':
+        pass
+    elif asm.upper() == 'SOFT':
+        pass
 
-    return {'RW': ppRW_1c,
-            'RW2': ppRW_2c,
-            'H': ppHybrid_1c,
-            'H2': ppHybrid_2c,
-            'W': ppWSLS,
-            'R': ppRandom}
+    return 'Hi'
 
 
 
@@ -160,15 +161,8 @@ def ppRW_1c(parameters, data):
         ppDict['RPE_RW'].append(rpe)
         for qi, q_est in enumerate(Q_est[triali, :]):
             ppDict[f'Qest_{qi}_RW'].append(q_est)
-    
-    # Save data
-    ppData = pd.DataFrame(ppDict, columns=var_list)
-    ## Correct indexes
-    ppData.reset_index(drop=True, inplace=True)
-    data.reset_index(drop=True, inplace=True)
-    ppData = pd.concat([data, ppData], axis=1)
 
-    return ppData
+    return af.save_data(ppDict, data, var_list)
 
 
 # ~~ RW-PH Hybrid ~~ #
@@ -279,16 +273,8 @@ def ppHybrid_1c(parameters, data, salpha=0.01):
         ppDict['alpha_H'].append(alpha[triali, selcue])
         for qi, q_est in enumerate(Q_est[triali, :]):
             ppDict[f'Qest_{qi}_H'].append(q_est)
-    
-    # Save data
-    ppData = pd.DataFrame(ppDict, columns=var_list)
-    ## Correct indexes
-    ppData.reset_index(drop=True, inplace=True)
-    data.reset_index(drop=True, inplace=True)
-    ppData = pd.concat([data, ppData], axis=1)
 
-    return ppData
-
+    return af.save_data(ppDict, data, var_list)
 
 
 #%% ~~ Models (2 cues) ~~ %%#
@@ -390,15 +376,8 @@ def ppRW_2c(parameters, data):
         ppDict['RPE_RW2'].append(reward - Q_est[triali - 1, selcue])
         for qi, q_est in enumerate(Q_est[triali, :]):
             ppDict[f'Qest_{qi}_RW2'].append(q_est)
-    
-    # Save data
-    ppData = pd.DataFrame(ppDict, columns=var_list)
-    ## Correct indexes
-    ppData.reset_index(drop=True, inplace=True)
-    data.reset_index(drop=True, inplace=True)
-    ppData = pd.concat([data, ppData], axis=1)
 
-    return ppData
+    return af.save_data(ppDict, data, var_list)
 
 
 # ~~ RW-PH Hybrid ~~ #
@@ -510,15 +489,8 @@ def ppHybrid_2c(parameters, data, salpha=0.01):
         ppDict['alpha_H2'].append(alpha[triali, selcue])
         for qi, q_est in enumerate(Q_est[triali, :]):
             ppDict[f'Qest_{qi}_H2'].append(q_est)
-    
-    # Save data
-    ppData = pd.DataFrame(ppDict, columns=var_list)
-    ## Correct indexes
-    ppData.reset_index(drop=True, inplace=True)
-    data.reset_index(drop=True, inplace=True)
-    ppData = pd.concat([data, ppData], axis=1)
 
-    return ppData
+    return af.save_data(ppDict, data, var_list)
 
 
 
@@ -549,7 +521,7 @@ def ppWSLS(data):
     # Variables
     # ---------
     # Dataframe
-    var_list = ['selCue_W', 'reward_W']
+    var_list = ['selCue_W', 'prob_W', 'reward_W']
     ppDict = {vari:[] for vari in var_list}
     
     # Model
@@ -580,18 +552,12 @@ def ppWSLS(data):
         reward = int(selcues[triali] == trial.targetLoc)
         
         ppDict['selCue_W'].append(selcues[triali])
+        ##SG: If there is some uncertainty in which cue Wilhelm will pick,
+            # there is something wrong in the model.
+        ppDict['prob_W'].append(1)
         ppDict['reward_W'].append(reward)
-    
-    # Save data
-    ppData = pd.DataFrame(ppDict, columns=var_list)
-    ## Correct indexes
-    ppData.reset_index(drop=True, inplace=True)
-    data.reset_index(drop=True, inplace=True)
-    
-    ppData = pd.concat([data, ppData], axis=1)
 
-    # Output dataframe
-    return ppData
+    return af.save_data(ppDict, data, var_list)
 
 
 # ~~ Renee ~~ #
@@ -630,17 +596,8 @@ def ppRandom(data):
         ppDict['prob_R'].append(0.5)
         reward = int(selcue == trial.targetLoc)
         ppDict['reward_R'].append(reward)
-    
-    # Save data
-    ppData = pd.DataFrame(ppDict, columns=var_list)
-    ## Correct indexes
-    ppData.reset_index(drop=True, inplace=True)
-    data.reset_index(drop=True, inplace=True)
-    
-    ppData = pd.concat([data, ppData], axis=1)
 
-    # Output dataframe
-    return ppData
+    return af.save_data(ppDict, data, var_list)
 
 
 
@@ -677,7 +634,7 @@ def pp_negLL(thetas, data, model):
     # Log-likelihood of choice
     loglik_of_choice = []
     # Simulate data
-    modelDict = funcDict()
+    modelDict = af.pp_models()
     if not model.upper() in ['W', 'R']:
         simData = modelDict[model.upper()](thetas, data)
     else:
@@ -727,7 +684,7 @@ def pp_negSpearCor(thetas, data, model):
     data = data.rename(columns={f'selCue_{model}':'selCue',
                                 f'prob_{model}':'prob'})
     # Simulate data
-    modelDict = funcDict()
+    modelDict = af.pp_models()
     simData = modelDict[model.upper()](thetas, data)
 
     # Correlation between RT and RPE
