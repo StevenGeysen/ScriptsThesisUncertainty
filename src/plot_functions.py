@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Plot functions -- Version 1.2
-Last edit:  2022/06/28
+"""     Plot functions -- Version 1.3
+Last edit:  2022/07/04
 Author(s):  Geysen, Steven (SG)
 Notes:      - Functions used to plot output
                 * Heatmap
@@ -9,11 +9,9 @@ Notes:      - Functions used to plot output
                     - Selection plot
                     - RT distributions
             - Release notes:
-                * Sanity checks
+                * Tested sanity checks
             
-To do:      - Implement in other scripts
-            - Add functions of other often used plots
-            - Test sanity plots
+To do:      - Add functions of other often used plots
             
 Comments:   
             
@@ -28,20 +26,9 @@ Sources:     https://matplotlib.org/stable/gallery/images_contours_and_fields/im
 import matplotlib
 
 import numpy as np
+
 import matplotlib.pyplot as plt
-
-
-
-#%% ~~ Support ~~ %%#
-#-------------------#
-
-
-def modelDict():
-
-    return {'RW': 'Rescorla-Wagner',
-            'H': 'RW-PH Hybrid',
-            'W': 'WSLS',
-            'R': 'Random'}
+import src.assisting_functions as af
 
 
 
@@ -175,7 +162,7 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
 
 
 # ~~ Selection plot ~~ #
-def selplot(data, model, thetas, plotnr, pp=''):
+def selplot(data, model, plotnr, thetas=None, pp=''):
     """
     Plot cue selection of model
 
@@ -205,9 +192,9 @@ def selplot(data, model, thetas, plotnr, pp=''):
 
     plt.figure(plotnr)
     # Set title
-    models = modelDict()
-    if not model.upper() in ['R', 'W']:
-        if model.upper() == 'RW':
+    models = af.labelDict()
+    if not model.upper() in ['W', 'R']:
+        if model.upper()[:2] == 'RW':
             title = f'Cue selection {pp} {models[model.upper()]}: \
                     $\u03B1$ = {thetas[0]}; $\u03B2$ = {thetas[1]}'
         else:
@@ -256,8 +243,8 @@ def rt_dist(data, model, thetas, plotnr, pp=''):
     None.
     """
 
-    # Renee and Wilhelm do not simulate RTs.
-    assert model.upper() in ['RW', 'H'], 'Model has no simulated RT'
+    # Wilhelm and Renee do not simulate RTs.
+    assert not model.upper() in ['W', 'R'], 'Model has no simulated RT'
 
     # Response times
     rt_valid = np.where(data['relCue'] == data['targetLoc'],
@@ -265,8 +252,8 @@ def rt_dist(data, model, thetas, plotnr, pp=''):
     rt_invalid = np.where(data['relCue'] != data['targetLoc'],
                         data[f'rt_{model.upper()}'], np.nan)
     # Set title
-    models = modelDict()
-    if model.upper() == 'RW':
+    models = af.labelDict()
+    if model.upper()[:2] == 'RW':
         title = f'RT distribution {pp} {models[model.upper()]}: \
                 $\u03B1$ = {thetas[0]}; $\u03B2$ = {thetas[1]}'
     else:
@@ -285,7 +272,6 @@ def rt_dist(data, model, thetas, plotnr, pp=''):
     ax1.set_title('Invalid RT (s)')
 
     plt.show()
-
 
 
 
