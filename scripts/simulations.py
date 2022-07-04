@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Simulations -- Version 2
-Last edit:  2022/06/27
+"""     Simulations -- Version 2.1
+Last edit:  2022/07/04
 Author(s):  Geysen, Steven (SG)
 Notes:      - Simulations of the task used by Marzecova et al. (2019)
             - Release notes:
@@ -77,8 +77,13 @@ for simi in range(N_SIMS):
     
     Daphne = sf.simRW_1c((alpha, beta), exStruc)
     Hugo = sf.simHybrid_1c((alpha, beta), Daphne)
+    Wilhelm = sf.simWSLS(Hugo)
+    Renee = sf.simRandom(Wilhelm)
     
-    Hugo.to_csv(SIM_DIR / f'simModels_alpha_{alpha}_beta_{beta}.csv')
+    Renee.to_csv(SIM_DIR / f'simModels_alpha_{alpha}_beta_{beta}.csv')
+    
+    pf.selplot(Renee, 'rw', plotnr, thetas=(alpha, beta), pp=simi)
+    plotnr += 1
 
 
 
@@ -87,6 +92,7 @@ for simi in range(N_SIMS):
 
 
 simList = [filei.name for filei in Path.iterdir(SIM_DIR)]
+
 
 
 #%% ~~ Grid search ~~ %%#
