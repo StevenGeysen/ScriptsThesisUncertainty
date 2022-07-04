@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Simulation functions -- Version 2.1.1
-Last edit:  2022/06/28
+"""     Simulation functions -- Version 2.2
+Last edit:  2022/07/04
 Author(s):  Geysen, Steven (SG)
 Notes:      - Functions used for the simulation of the task used by
                 Marzecova et al. (2019). Both structure and models.
-            - Models with SoftMax policy
-                * Rescorla-Wagner (Daphne)
-                * Rescorla-Wagner - Pearce-Hall hybrid (Hugo)
-                * Win-stay-lose-shift (Wilhelm)
-                * Random (Renee)
+                * Models with SoftMax policy
+                    - Rescorla-Wagner (Daphne)
+                    - Rescorla-Wagner - Pearce-Hall hybrid (Hugo)
+                    - Win-stay-lose-shift (Wilhelm)
+                    - Random (Renee)
+                * (negaitve) log likelihood
+                * Negative Spearman correlation
             - Release notes:
-                * (negative) log likelihood
-                * Fixed SoftMax
+                * Negative Spearman correlation
             
 To do:      - Argmax
             - Probability of Wilhelm
@@ -26,7 +27,6 @@ Sources:    https://www.frontiersin.org/articles/10.3389/fpsyg.2018.00612/full
             https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.exponnorm.html
             https://hannekedenouden.ruhosting.nl/RLtutorial/html/SoftMax.html
             https://lindeloev.shinyapps.io/shiny-rt/
-            https://elifesciences.org/articles/49547
 """
 
 
@@ -37,6 +37,8 @@ Sources:    https://www.frontiersin.org/articles/10.3389/fpsyg.2018.00612/full
 
 import numpy as np
 import pandas as pd
+
+import src.assisting_functions as af
 
 from scipy import stats
 
@@ -149,6 +151,35 @@ def sim_experiment(simnr=1, ntrials=640, nswitch=7):
 
 
 
+#%% ~~ Blocks ~~ %%#
+####################
+
+
+def policy(asm):
+    if asm.upper() == 'ARG':
+        pass
+    elif asm.upper() == 'SOFT':
+        pass
+
+    return 'Hi'
+
+
+def sim_rt(selcue, probcue):
+    try:
+        ##SG: K = tau / sigma, loc = mu, scale = sigma. Sigma and mu are
+            # taken from exgauss fit of the original data.
+        RT = stats.exponnorm.rvs(K = abs(selcue - probcue) / 0.02635,
+                                 loc = 0.3009, scale = 0.02635)
+    except:
+        RT = np.nan
+        print('Failed rt sampling')
+    if RT == float('inf'):
+        RT = 1.7
+
+    return RT
+
+
+
 #%% ~~ Models ~~ %%#
 ####################
 
@@ -229,17 +260,7 @@ def simRW_1c(parameters, data):
         simDict['prob_RW'].append(probcue)
         
         # Response time
-        try:
-            ##SG: K = tau / sigma, loc = mu, scale = sigma. Sigma and mu are
-                # taken from exgauss fit of the original data.
-            RT = stats.exponnorm.rvs(K = abs(selcue - probcue) / 0.02635,
-                                     loc = 0.3009, scale = 0.02635)
-        except:
-            RT = np.nan
-            print('Failed rt sampling')
-        if RT == float('inf'):
-            RT = 1.7
-        simDict['rt_RW'].append(RT)
+        simDict['rt_RW'].append(sim_rt(selcue, probcue))
         
         # Reward calculations
         ## Based on validity
@@ -265,15 +286,8 @@ def simRW_1c(parameters, data):
         simDict['RPE_RW'].append(rpe)
         for qi, q_est in enumerate(Q_est[triali, :]):
             simDict[f'Qest_{qi}_RW'].append(q_est)
-    
-    # Save data
-    simData = pd.DataFrame(simDict, columns=var_list)
-    ## Correct indexes
-    simData.reset_index(drop=True, inplace=True)
-    data.reset_index(drop=True, inplace=True)
-    simData = pd.concat([data, simData], axis=1)
 
-    return simData
+    return af.save_data(simDict, data, var_list)
 
 
 # ~~ RW-PH Hybrid ~~ #
@@ -353,17 +367,7 @@ def simHybrid_1c(parameters, data, salpha=0.01):
         simDict['prob_H'].append(probcue)
         
         # Response time
-        try:
-            ##SG: K = tau / sigma, loc = mu, scale = sigma. Sigma and mu are
-                # taken from exgauss fit of the original data.
-            RT = stats.exponnorm.rvs(K = abs(selcue - probcue) / 0.02635,
-                                     loc = 0.3009, scale = 0.02635)
-        except:
-            RT = np.nan
-            print('Failed rt sampling')
-        if RT == float('inf'):
-            RT = 1.7
-        simDict['rt_H'].append(RT)
+        simDict['rt_H'].append(sim_rt(selcue, probcue))
         
         # Reward calculations
         ## Based on validity
@@ -398,15 +402,8 @@ def simHybrid_1c(parameters, data, salpha=0.01):
         simDict['alpha_H'].append(alpha[triali, selcue])
         for qi, q_est in enumerate(Q_est[triali, :]):
             simDict[f'Qest_{qi}_H'].append(q_est)
-    
-    # Save data
-    simData = pd.DataFrame(simDict, columns=var_list)
-    ## Correct indexes
-    simData.reset_index(drop=True, inplace=True)
-    data.reset_index(drop=True, inplace=True)
-    simData = pd.concat([data, simData], axis=1)
 
-    return simData
+    return af.save_data(simDict, data, var_list)
 
 
 
@@ -435,21 +432,21 @@ def simRW_2c(parameters, data):
     -------
     simData : pandas.DataFrame
         Contains columns of 'data' and simulated behaviour of Daphne:
-            0. 'selCue_RW' - selected cue by the Rescorla-Wagner model
-            1. 'prob_RW' - probability to select cue 0
-            2. 'rt_RW' - response time
-            3. 'reward_RW' - reward based on cue selected by Rescorla-Wagner
-            4. 'RPE_RW' - reward prediction error
-            5. 'Qest_0_RW' - estimated value of cue 0
-            6. 'Qest_1_RW' - estimated value of cue 1
+            0. 'selCue_RW2' - selected cue by the Rescorla-Wagner model
+            1. 'prob_RW2' - probability to select cue 0
+            2. 'rt_RW2' - response time
+            3. 'reward_RW2' - reward based on cue selected by Rescorla-Wagner
+            4. 'RPE_RW2' - reward prediction error
+            5. 'Qest_0_RW2' - estimated value of cue 0
+            6. 'Qest_1_RW2' - estimated value of cue 1
     """
 
     # Variables
     #----------
     # Dataframe
     var_list = [
-        'selCue_RW', 'prob_RW', 'rt_RW', 'reward_RW',
-        'RPE_RW', 'Qest_0_RW', 'Qest_1_RW'
+        'selCue_RW2', 'prob_RW2', 'rt_RW2', 'reward_RW2',
+        'RPE_RW2', 'Qest_0_RW2', 'Qest_1_RW2'
         ]
     simDict = {vari:[] for vari in var_list}
     
@@ -482,27 +479,17 @@ def simRW_2c(parameters, data):
             temp = np.random.rand() <= probcue
             ## Action selection
             selcue = int(temp == 0)
-        simDict['selCue_RW'].append(selcue)
-        simDict['prob_RW'].append(probcue)
+        simDict['selCue_RW2'].append(selcue)
+        simDict['prob_RW2'].append(probcue)
         
         # Response time
-        try:
-            ##SG: K = tau / sigma, loc = mu, scale = sigma. Sigma and mu are
-                # taken from exgauss fit of the original data.
-            RT = stats.exponnorm.rvs(K = abs(selcue - probcue) / 0.02635,
-                                     loc = 0.3009, scale = 0.02635)
-        except:
-            RT = np.nan
-            print('Failed rt sampling')
-        if RT == float('inf'):
-            RT = 1.7
-        simDict['rt_RW'].append(RT)
+        simDict['rt_RW2'].append(sim_rt(selcue, probcue))
         
         # Reward calculations
         ## Based on validity
         ##AM: If cue==target reward = 1, if cue!=target reward = 0
         reward = int(selcue == trial.targetLoc)
-        simDict['reward_RW'].append(reward)
+        simDict['reward_RW2'].append(reward)
         
         # Update rule (RW)
         #-----------------
@@ -520,18 +507,11 @@ def simRW_2c(parameters, data):
                 rpe = reward - Q_est[triali - 1, cuei]
                 # Cue estimates
                 Q_est[triali, cuei] = Q_est[triali, cuei] + parameters[0] * rpe
-        simDict['RPE_RW'].append(reward - Q_est[triali - 1, selcue])
+        simDict['RPE_RW2'].append(reward - Q_est[triali - 1, selcue])
         for qi, q_est in enumerate(Q_est[triali, :]):
-            simDict[f'Qest_{qi}_RW'].append(q_est)
-    
-    # Save data
-    simData = pd.DataFrame(simDict, columns=var_list)
-    ## Correct indexes
-    simData.reset_index(drop=True, inplace=True)
-    data.reset_index(drop=True, inplace=True)
-    simData = pd.concat([data, simData], axis=1)
+            simDict[f'Qest_{qi}_RW2'].append(q_est)
 
-    return simData
+    return af.save_data(simDict, data, var_list)
 
 
 # ~~ RW-PH Hybrid ~~ #
@@ -557,22 +537,22 @@ def simHybrid_2c(parameters, data, salpha=0.01):
     -------
     simData : pandas.DataFrame
         Contains columns of 'data' and simulated behaviour of Hugo:
-            0. 'selCue_H' - selected cue by the hybrid model
-            1. 'prob_H' - probability to select cue 0
-            2. 'rt_H' - response time
-            3. 'reward_H' - reward based on cue selected by hybrid model
-            4. 'alpha_H' - learning rate
-            5. 'RPE_H' - reward prediction error
-            6. 'Qest_0_H' - estimated value of cue 0
-            7. 'Qest_1_H' - estimated value of cue 1
+            0. 'selCue_H2' - selected cue by the hybrid model
+            1. 'prob_H2' - probability to select cue 0
+            2. 'rt_H2' - response time
+            3. 'reward_H2' - reward based on cue selected by hybrid model
+            4. 'alpha_H2' - learning rate
+            5. 'RPE_H2' - reward prediction error
+            6. 'Qest_0_H2' - estimated value of cue 0
+            7. 'Qest_1_H2' - estimated value of cue 1
     """
 
     # Variables
     #----------
     # Dataframe
     var_list = [
-        'selCue_H', 'prob_H', 'rt_H', 'reward_H', 'alpha_H',
-        'RPE_H', 'Qest_0_H', 'Qest_1_H'
+        'selCue_H2', 'prob_H2', 'rt_H2', 'reward_H2', 'alpha_H2',
+        'RPE_H2', 'Qest_0_H2', 'Qest_1_H2'
         ]
     simDict = {vari:[] for vari in var_list}
     
@@ -607,27 +587,17 @@ def simHybrid_2c(parameters, data, salpha=0.01):
             temp = np.random.rand() <= probcue
             ## Action selection
             selcue = int(temp == 0)
-        simDict['selCue_H'].append(selcue)
-        simDict['prob_H'].append(probcue)
+        simDict['selCue_H2'].append(selcue)
+        simDict['prob_H2'].append(probcue)
         
         # Response time
-        try:
-            ##SG: K = tau / sigma, loc = mu, scale = sigma. Sigma and mu are
-                # taken from exgauss fit of the original data.
-            RT = stats.exponnorm.rvs(K = abs(selcue - probcue) / 0.02635,
-                                     loc = 0.3009, scale = 0.02635)
-        except:
-            RT = np.nan
-            print('Failed rt sampling')
-        if RT == float('inf'):
-            RT = 1.7
-        simDict['rt_H'].append(RT)
+        simDict['rt_H2'].append(sim_rt(selcue, probcue))
         
         # Reward calculations
         ## Based on validity
         ##AM: If cue==target reward = 1, if cue!=target reward = 0
         reward = int(selcue == trial.targetLoc)
-        simDict['reward_H'].append(reward)
+        simDict['reward_H2'].append(reward)
         
         # Hybrid
         #-------
@@ -653,19 +623,12 @@ def simHybrid_2c(parameters, data, salpha=0.01):
                 # Cue estimates
                 Q_est[triali, cuei] = Q_est[triali, cuei] + \
                     alpha[triali, cuei] * rpe
-        simDict['RPE_H'].append(reward - Q_est[triali - 1, selcue])
-        simDict['alpha_H'].append(alpha[triali, selcue])
+        simDict['RPE_H2'].append(reward - Q_est[triali - 1, selcue])
+        simDict['alpha_H2'].append(alpha[triali, selcue])
         for qi, q_est in enumerate(Q_est[triali, :]):
-            simDict[f'Qest_{qi}_H'].append(q_est)
-    
-    # Save data
-    simData = pd.DataFrame(simDict, columns=var_list)
-    ## Correct indexes
-    simData.reset_index(drop=True, inplace=True)
-    data.reset_index(drop=True, inplace=True)
-    simData = pd.concat([data, simData], axis=1)
+            simDict[f'Qest_{qi}_H2'].append(q_est)
 
-    return simData
+    return af.save_data(simDict, data, var_list)
 
 
 
@@ -696,7 +659,7 @@ def simWSLS(data):
     # Variables
     # ---------
     # Dataframe
-    var_list = ['selCue_W', 'reward_W']
+    var_list = ['selCue_W', 'prob_W', 'reward_W']
     simDict = {vari:[] for vari in var_list}
     
     # Model
@@ -727,18 +690,12 @@ def simWSLS(data):
         reward = int(selcues[triali] == trial.targetLoc)
         
         simDict['selCue_W'].append(selcues[triali])
+        ##SG: If there is some uncertainty in which cue Wilhelm will pick,
+            # there is something wrong in the model.
+        simDict['prob_W'].append(1)
         simDict['reward_W'].append(reward)
-    
-    # Save data
-    simData = pd.DataFrame(simDict, columns=var_list)
-    ## Correct indexes
-    simData.reset_index(drop=True, inplace=True)
-    data.reset_index(drop=True, inplace=True)
-    
-    simData = pd.concat([data, simData], axis=1)
 
-    # Output dataframe
-    return simData
+    return af.save_data(simDict, data, var_list)
 
 
 # ~~ Renee ~~ #
@@ -777,17 +734,8 @@ def simRandom(data):
         simDict['prob_R'].append(0.5)
         reward = int(selcue == trial.targetLoc)
         simDict['reward_R'].append(reward)
-    
-    # Save data
-    simData = pd.DataFrame(simDict, columns=var_list)
-    ## Correct indexes
-    simData.reset_index(drop=True, inplace=True)
-    data.reset_index(drop=True, inplace=True)
-    
-    simData = pd.concat([data, simData], axis=1)
 
-    # Output dataframe
-    return simData
+    return af.save_data(simDict, data, var_list)
 
 
 
@@ -815,7 +763,7 @@ def sim_negLL(thetas, data, model):
 
     Returns
     -------
-    Negative log-likelihood of selected stimuli during a block.
+    Negative log-likelihood of selected stimuli.
     """
 
     # Rename to avoid duplicates
@@ -824,11 +772,8 @@ def sim_negLL(thetas, data, model):
     # Log-likelihood of choice
     loglik_of_choice = []
     # Simulate data
-    modelDict = {'RW': simRW_1c,
-                 'H': simHybrid_1c,
-                 'W': simWSLS,
-                 'R': simRandom}
-    if model.upper() in ['RW', 'H']:
+    modelDict = af.sim_models()
+    if not model.upper() in ['W', 'R']:
         simData = modelDict[model.upper()](thetas, data)
     else:
         simData = modelDict[model.upper()](data)
@@ -844,6 +789,46 @@ def sim_negLL(thetas, data, model):
     # Return negative log likelihood
     # return -1 * np.nansum(loglik_of_choice)
     return np.nansum(loglik_of_choice)
+
+
+def sim_negSpearCor(thetas, data, model):
+    """
+    Negative Spearman correlation of learning model of reaction time and
+    estimated value of selected cue
+
+    Parameters
+    ----------
+    thetas : list, array, tuple
+        Parameter values.
+    data : pd.DataFrame
+        Prepared data of simulation, containing structure of experiment.
+        Doesn't need to go through rescon first.
+    model : string
+        Name of the used model:
+            RW - Rescorla-Wagner
+            H - RW-PH hybrid
+            W - Win-stay-lose-shift
+            R - Random
+
+    Returns
+    -------
+    negative spearman r
+    """
+
+    # Wilhelm and Renee do not simulate RTs.
+    assert not model.upper() in ['W', 'R'], 'Model has no simulated RT'
+
+    # Rename to avoid duplicates
+    data = data.rename(columns={f'selCue_{model}':'selCue',
+                                f'prob_{model}':'prob'})
+    # Simulate data
+    modelDict = af.sim_models()
+    simData = modelDict[model.upper()](thetas, data)
+
+    # Correlation between RT and RPE
+    return - stats.spearmanr(simData[f'rt_{model.upper()}'],
+                             simData[f'RPE_{model.upper()}'],
+                             nan_policy = 'omit')[0]
 
 
 
