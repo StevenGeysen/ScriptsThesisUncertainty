@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Assisting functions -- Version 1
-Last edit:  2022/07/04
+"""     Assisting functions -- Version 1.1
+Last edit:  2022/07/05
 Author(s):  Geysen, Steven (SG)
 Notes:      - Assisting functions to reduce repetition in other functions
                 * labelDict
-                * pp_models
-                * sim_models
+                * policy
                 * save_data
             - Release notes:
-                * Initial commit
+                * Policy ()
 To do:      - 
             
 Questions:  
 Comments:   
-Sources:    
+Sources:    https://goodresearch.dev/setup.html
 """
 
 
@@ -22,7 +21,7 @@ Sources:
 #%% ~~ Imports ~~ %%#
 
 
-
+import numpy as np
 import pandas as pd
 
 import src.behavioural_functions as bf
@@ -47,32 +46,46 @@ def labelDict():
             'PP': 'Participant'}
 
 
-def pp_models():
+def policy(asm, Qest, beta=None):
     """
-    Participant dictionary
-    Contains the functions of the different behavioural models.
+    Policy
+    Select cue from with the argmax or SoftMax action selection method.
+
+    Parameters
+    ----------
+    asm : string
+        Action selection method.
+    Qest : itarable
+        Estimated values of previous trial.
+    beta : float, optional
+        SoftMax temperature. The default is None.
+
+    Returns
+    -------
+    int
+        Selected cue.
     """
 
-    return {'RW': bf.ppRW_1c,
-            'RW2': bf.ppRW_2c,
-            'H': bf.ppHybrid_1c,
-            'H2': bf.ppHybrid_2c,
-            'W': bf.ppWSLS,
-            'R': bf.ppRandom}
+    # Argmax
+    if asm.upper() == 'ARG':
+        selcue = np.argmax(Qest)
+        probcue = 1
+    
+    # SoftMax
+    elif asm.upper() == 'SOFT':
+        # Need beta value if SoftMax is used
+        assert not beta is None, 'Missing beta value'
+        
+        ## Probability of cue 0
+        probcue = np.exp(beta * Qest[0]) / \
+            np.sum(np.exp(np.multiply(beta, Qest)))
+        ##SG: If the probability of cue 0 is smaller than a random value,
+            # follow cue 1.
+        temp = np.random.rand() <= probcue
+        ## Action selection
+        selcue = int(temp == 0)
 
-
-def sim_models():
-    """
-    Simulation dictionary
-    Contains the functions of the different simulation models.
-    """
-
-    return {'RW': sf.simRW_1c,
-            'RW2': sf.simRW_2c,
-            'H': sf.simHybrid_1c,
-            'H2': sf.simHybrid_2c,
-            'W': sf.simWSLS,
-            'R': sf.simRandom}
+    return selcue, probcue
 
 
 def save_data(dataDict, strucData, column_list):

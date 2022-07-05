@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Model functions -- Version 2
-Last edit:  2022/07/04
+"""     Model functions -- Version 2.1
+Last edit:  2022/07/05
 Author(s):  Geysen, Steven (SG)
 Notes:      - Models for the ananlysis of behavioural data from
                 Marzecova et al. (2019)
-                * Models with SoftMax policy
+                * Models
                     - Rescorla-Wagner (Daphne)
                     - Rescorla-Wagner - Pearce-Hall hybrid (Hugo)
                     - Win-stay-lose-shift (Wilhelm)
@@ -13,9 +13,9 @@ Notes:      - Models for the ananlysis of behavioural data from
                 * (negaitve) log likelihood
                 * Negative Spearman correlation
             - Release notes:
-                * Negative Spearman correlation
+                * Policy function with argmax and SoftMax in af
 To do:      - Adjust models to behavioural data
-            - Argmax
+            
 Questions:  - How do I update the models? Do I use the validity of the
                 participant's selection, or do I use the validity of the
                 model's selection?
@@ -44,17 +44,22 @@ from scipy import stats
 
 
 
-#%% ~~ Policy ~~ %%#
+#%% ~~ Blocks ~~ %%#
 ####################
 
 
-def policy(asm):
-    if asm.upper() == 'ARG':
-        pass
-    elif asm.upper() == 'SOFT':
-        pass
+def pp_models():
+    """
+    Participant dictionary
+    Contains the functions of the different behavioural models.
+    """
 
-    return 'Hi'
+    return {'RW': ppRW_1c,
+            'RW2': ppRW_2c,
+            'H': ppHybrid_1c,
+            'H2': ppHybrid_2c,
+            'W': ppWSLS,
+            'R': ppRandom}
 
 
 
@@ -67,7 +72,7 @@ def policy(asm):
 
 
 # ~~ Rescorla - Wagner ~~ #
-def ppRW_1c(parameters, data):
+def ppRW_1c(parameters, data, asm='soft'):
     """
     Daphne the delta learner
     Rescorla-Wagner predictions learning model with SoftMax, based on
@@ -83,6 +88,8 @@ def ppRW_1c(parameters, data):
         The default is (0.01, 0.5).
     data : pandas.DataFrame
         Dataframe containing the structure of the experiment.
+    asm : string, optional
+        The action selection method, policy. The default is SoftMax.
 
     Returns
     -------
@@ -126,14 +133,8 @@ def ppRW_1c(parameters, data):
             selcue = np.random.randint(N_CUES)
             probcue = 0.5
         else:
-            ## Probability of cue 0
-            probcue = np.exp(parameters[1] * Q_est[triali, 0]) / \
-                np.sum(np.exp(np.multiply(parameters[1], Q_est[triali, :])))
-            ##SG: If the probability of cue 0 is smaller than a random value,
-                # follow cue 1.
-            temp = np.random.rand() <= probcue
-            ## Action selection
-            selcue = int(temp == 0)
+            selcue, probcue = af.policy(asm, Q_est[triali - 1, :],
+                                        parameters[1])
         ppDict['selCue_RW'].append(selcue)
         ppDict['prob_RW'].append(probcue)
         
@@ -166,7 +167,7 @@ def ppRW_1c(parameters, data):
 
 
 # ~~ RW-PH Hybrid ~~ #
-def ppHybrid_1c(parameters, data, salpha=0.01):
+def ppHybrid_1c(parameters, data, salpha=0.01, asm='soft'):
     """
     Hugo the hybrid learner
     The RW-PH hybrid learning model with SoftMax. The policy calculations
@@ -181,8 +182,10 @@ def ppHybrid_1c(parameters, data, salpha=0.01):
         The default is (0.01, 0.5).
     data : pandas.DataFrame
         Dataframe containing the structure of the experiment.
-    salpha : TYPE, optional
+    salpha : float, optional
         Start of alpha. The default is 0.01.
+    asm : string, optional
+        The action selection method, policy. The default is SoftMax.
 
     Returns
     -------
@@ -229,14 +232,8 @@ def ppHybrid_1c(parameters, data, salpha=0.01):
             selcue = np.random.randint(N_CUES)
             probcue = 0.5
         else:
-            ## Probability of cue 0
-            probcue = np.exp(parameters[1] * Q_est[triali, 0]) / \
-                np.sum(np.exp(np.multiply(parameters[1], Q_est[triali, :])))
-            ##SG: If the probability of cue 0 is smaller than a random value,
-                # follow cue 1.
-            temp = np.random.rand() <= probcue
-            ## Action selection
-            selcue = int(temp == 0)
+            selcue, probcue = af.policy(asm, Q_est[triali - 1, :],
+                                        parameters[1])
         ppDict['selCue_H'].append(selcue)
         ppDict['prob_H'].append(probcue)
         
@@ -282,7 +279,7 @@ def ppHybrid_1c(parameters, data, salpha=0.01):
 
 
 # ~~ Rescorla - Wagner ~~ #
-def ppRW_2c(parameters, data):
+def ppRW_2c(parameters, data, asm='soft'):
     """
     Daphne the delta learner
     The Rescorla - Wagner learning model with SoftMax. The policy calculations
@@ -297,6 +294,8 @@ def ppRW_2c(parameters, data):
         The default is (0.01, 0.5).
     data : pandas.DataFrame
         Dataframe containing the structure of the experiment.
+    asm : string, optional
+        The action selection method, policy. The default is SoftMax.
 
     Returns
     -------
@@ -340,14 +339,8 @@ def ppRW_2c(parameters, data):
             selcue = np.random.randint(N_CUES)
             probcue = 0.5
         else:
-            ## Probability of cue 0
-            probcue = np.exp(parameters[1] * Q_est[triali, 0]) / \
-                np.sum(np.exp(np.multiply(parameters[1], Q_est[triali, :])))
-            ##SG: If the probability of cue 0 is smaller than a random value,
-                # follow cue 1.
-            temp = np.random.rand() <= probcue
-            ## Action selection
-            selcue = int(temp == 0)
+            selcue, probcue = af.policy(asm, Q_est[triali - 1, :],
+                                        parameters[1])
         ppDict['selCue_RW2'].append(selcue)
         ppDict['prob_RW2'].append(probcue)
         
@@ -381,7 +374,7 @@ def ppRW_2c(parameters, data):
 
 
 # ~~ RW-PH Hybrid ~~ #
-def ppHybrid_2c(parameters, data, salpha=0.01):
+def ppHybrid_2c(parameters, data, salpha=0.01, asm='soft'):
     """
     Hugo the hybrid learner
     The RW-PH hybrid learning model with SoftMax. The policy calculations
@@ -396,8 +389,10 @@ def ppHybrid_2c(parameters, data, salpha=0.01):
         The default is (0.01, 0.5).
     data : pandas.DataFrame
         Dataframe containing the structure of the experiment.
-    salpha : TYPE, optional
+    salpha : float, optional
         Start of alpha. The default is 0.01.
+    asm : string, optional
+        The action selection method, policy. The default is SoftMax.
 
     Returns
     -------
@@ -444,14 +439,8 @@ def ppHybrid_2c(parameters, data, salpha=0.01):
             selcue = np.random.randint(N_CUES)
             probcue = 0.5
         else:
-            ## Probability of cue 0
-            probcue = np.exp(parameters[1] * Q_est[triali, 0]) / \
-                np.sum(np.exp(np.multiply(parameters[1], Q_est[triali, :])))
-            ##SG: If the probability of cue 0 is smaller than a random value,
-                # follow cue 1.
-            temp = np.random.rand() <= probcue
-            ## Action selection
-            selcue = int(temp == 0)
+            selcue, probcue = af.policy(asm, Q_est[triali - 1, :],
+                                        parameters[1])
         ppDict['selCue_H2'].append(selcue)
         ppDict['prob_H2'].append(probcue)
         
@@ -634,7 +623,7 @@ def pp_negLL(thetas, data, model):
     # Log-likelihood of choice
     loglik_of_choice = []
     # Simulate data
-    modelDict = af.pp_models()
+    modelDict = pp_models()
     if not model.upper() in ['W', 'R']:
         simData = modelDict[model.upper()](thetas, data)
     else:
@@ -684,7 +673,7 @@ def pp_negSpearCor(thetas, data, model):
     data = data.rename(columns={f'selCue_{model}':'selCue',
                                 f'prob_{model}':'prob'})
     # Simulate data
-    modelDict = af.pp_models()
+    modelDict = pp_models()
     simData = modelDict[model.upper()](thetas, data)
 
     # Correlation between RT and RPE

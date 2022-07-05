@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Simulation functions -- Version 2.2
-Last edit:  2022/07/04
+"""     Simulation functions -- Version 2.2.1
+Last edit:  2022/07/05
 Author(s):  Geysen, Steven (SG)
 Notes:      - Functions used for the simulation of the task used by
                 Marzecova et al. (2019). Both structure and models.
-                * Models with SoftMax policy
+                * Models
                     - Rescorla-Wagner (Daphne)
                     - Rescorla-Wagner - Pearce-Hall hybrid (Hugo)
                     - Win-stay-lose-shift (Wilhelm)
@@ -13,10 +13,9 @@ Notes:      - Functions used for the simulation of the task used by
                 * (negaitve) log likelihood
                 * Negative Spearman correlation
             - Release notes:
-                * Negative Spearman correlation
+                * Policy function with argmax and SoftMax in af
             
-To do:      - Argmax
-            - Probability of Wilhelm
+To do:      - 
             
 Comments:   SG: Simulations return pandas.DataFrame. Model functions return
                 originale data with model selection appended.
@@ -155,15 +154,6 @@ def sim_experiment(simnr=1, ntrials=640, nswitch=7):
 ####################
 
 
-def policy(asm):
-    if asm.upper() == 'ARG':
-        pass
-    elif asm.upper() == 'SOFT':
-        pass
-
-    return 'Hi'
-
-
 def sim_rt(selcue, probcue):
     """
     Simulate response times
@@ -197,6 +187,20 @@ def sim_rt(selcue, probcue):
     return RT
 
 
+def sim_models():
+    """
+    Simulation dictionary
+    Contains the functions of the different simulation models.
+    """
+
+    return {'RW': simRW_1c,
+            'RW2': simRW_2c,
+            'H': simHybrid_1c,
+            'H2': simHybrid_2c,
+            'W': simWSLS,
+            'R': simRandom}
+
+
 
 #%% ~~ Models ~~ %%#
 ####################
@@ -207,7 +211,7 @@ def sim_rt(selcue, probcue):
 
 
 # ~~ Rescorla - Wagner ~~ #
-def simRW_1c(parameters, data):
+def simRW_1c(parameters, data, asm='soft'):
     """
     Daphne the delta learner
     The Rescorla - Wagner learning model with SoftMax. The policy calculations
@@ -222,6 +226,8 @@ def simRW_1c(parameters, data):
         The default is (0.01, 0.5).
     data : pandas.DataFrame
         Dataframe containing the structure of the experiment.
+    asm : string, optional
+        The action selection method, policy. The default is SoftMax.
 
     Returns
     -------
@@ -266,14 +272,8 @@ def simRW_1c(parameters, data):
             selcue = np.random.randint(N_CUES)
             probcue = 0.5
         else:
-            ## Probability of cue 0
-            probcue = np.exp(parameters[1] * Q_est[triali - 1, 0]) / \
-                np.sum(np.exp(np.multiply(parameters[1], Q_est[triali - 1, :])))
-            ##SG: If the probability of cue 0 is smaller than a random value,
-                # follow cue 1.
-            temp = np.random.rand() <= probcue
-            ## Action selection
-            selcue = int(temp == 0)
+            selcue, probcue = af.policy(asm, Q_est[triali - 1, :],
+                                        parameters[1])
         simDict['selCue_RW'].append(selcue)
         simDict['prob_RW'].append(probcue)
         
@@ -309,7 +309,7 @@ def simRW_1c(parameters, data):
 
 
 # ~~ RW-PH Hybrid ~~ #
-def simHybrid_1c(parameters, data, salpha=0.01):
+def simHybrid_1c(parameters, data, salpha=0.01, asm='soft'):
     """
     Hugo the hybrid learner
     The RW-PH hybrid learning model with SoftMax. The policy calculations
@@ -324,8 +324,10 @@ def simHybrid_1c(parameters, data, salpha=0.01):
         The default is (0.01, 0.5).
     data : pandas.DataFrame
         Dataframe containing the structure of the experiment.
-    salpha : TYPE, optional
+    salpha : float, optional
         Start of alpha. The default is 0.01.
+    asm : string, optional
+        The action selection method, policy. The default is SoftMax.
 
     Returns
     -------
@@ -373,14 +375,8 @@ def simHybrid_1c(parameters, data, salpha=0.01):
             selcue = np.random.randint(N_CUES)
             probcue = 0.5
         else:
-            ## Probability of cue 0
-            probcue = np.exp(parameters[1] * Q_est[triali - 1, 0]) / \
-                np.sum(np.exp(np.multiply(parameters[1], Q_est[triali - 1, :])))
-            ##SG: If the probability of cue 0 is smaller than a random value,
-                # follow cue 1.
-            temp = np.random.rand() <= probcue
-            ## Action selection
-            selcue = int(temp == 0)
+            selcue, probcue = af.policy(asm, Q_est[triali - 1, :],
+                                        parameters[1])
         simDict['selCue_H'].append(selcue)
         simDict['prob_H'].append(probcue)
         
@@ -430,7 +426,7 @@ def simHybrid_1c(parameters, data, salpha=0.01):
 
 
 # ~~ Rescorla - Wagner ~~ #
-def simRW_2c(parameters, data):
+def simRW_2c(parameters, data, asm='soft'):
     """
     Daphne the delta learner
     The Rescorla - Wagner learning model with SoftMax. The policy calculations
@@ -445,6 +441,8 @@ def simRW_2c(parameters, data):
         The default is (0.01, 0.5).
     data : pandas.DataFrame
         Dataframe containing the structure of the experiment.
+    asm : string, optional
+        The action selection method, policy. The default is SoftMax.
 
     Returns
     -------
@@ -489,14 +487,8 @@ def simRW_2c(parameters, data):
             selcue = np.random.randint(N_CUES)
             probcue = 0.5
         else:
-            ## Probability of cue 0
-            probcue = np.exp(parameters[1] * Q_est[triali - 1, 0]) / \
-                np.sum(np.exp(np.multiply(parameters[1], Q_est[triali - 1, :])))
-            ##SG: If the probability of cue 0 is smaller than a random value,
-                # follow cue 1.
-            temp = np.random.rand() <= probcue
-            ## Action selection
-            selcue = int(temp == 0)
+            selcue, probcue = af.policy(asm, Q_est[triali - 1, :],
+                                        parameters[1])
         simDict['selCue_RW2'].append(selcue)
         simDict['prob_RW2'].append(probcue)
         
@@ -533,7 +525,7 @@ def simRW_2c(parameters, data):
 
 
 # ~~ RW-PH Hybrid ~~ #
-def simHybrid_2c(parameters, data, salpha=0.01):
+def simHybrid_2c(parameters, data, salpha=0.01, asm='soft'):
     """
     Hugo the hybrid learner
     The RW-PH hybrid learning model with SoftMax. The policy calculations
@@ -548,8 +540,10 @@ def simHybrid_2c(parameters, data, salpha=0.01):
         The default is (0.01, 0.5).
     data : pandas.DataFrame
         Dataframe containing the structure of the experiment.
-    salpha : TYPE, optional
+    salpha : float, optional
         Start of alpha. The default is 0.01.
+    asm : string, optional
+        The action selection method, policy. The default is SoftMax.
 
     Returns
     -------
@@ -597,14 +591,8 @@ def simHybrid_2c(parameters, data, salpha=0.01):
             selcue = np.random.randint(N_CUES)
             probcue = 0.5
         else:
-            ## Probability of cue 0
-            probcue = np.exp(parameters[1] * Q_est[triali - 1, 0]) / \
-                np.sum(np.exp(np.multiply(parameters[1], Q_est[triali - 1, :])))
-            ##SG: If the probability of cue 0 is smaller than a random value,
-                # follow cue 1.
-            temp = np.random.rand() <= probcue
-            ## Action selection
-            selcue = int(temp == 0)
+            selcue, probcue = af.policy(asm, Q_est[triali - 1, :],
+                                        parameters[1])
         simDict['selCue_H2'].append(selcue)
         simDict['prob_H2'].append(probcue)
         
@@ -790,7 +778,7 @@ def sim_negLL(thetas, data, model):
     # Log-likelihood of choice
     loglik_of_choice = []
     # Simulate data
-    modelDict = af.sim_models()
+    modelDict = sim_models()
     if not model.upper() in ['W', 'R']:
         simData = modelDict[model.upper()](thetas, data)
     else:
@@ -840,7 +828,7 @@ def sim_negSpearCor(thetas, data, model):
     data = data.rename(columns={f'selCue_{model}':'selCue',
                                 f'prob_{model}':'prob'})
     # Simulate data
-    modelDict = af.sim_models()
+    modelDict = sim_models()
     simData = modelDict[model.upper()](thetas, data)
 
     # Correlation between RT and RPE
