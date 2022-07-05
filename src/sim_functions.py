@@ -13,7 +13,7 @@ Notes:      - Functions used for the simulation of the task used by
                 * (negaitve) log likelihood
                 * Negative Spearman correlation
             - Release notes:
-                * Policy function with argmax and SoftMax in af
+                * Debugged Spearman correlation
             
 To do:      - 
             
@@ -166,7 +166,7 @@ def sim_rt(selcue, probcue):
     selcue : int
         Selected cue.
     probcue : float
-        Probability that cue O is selected.
+        Probability that cue 0 is selected.
 
     Returns
     -------
@@ -772,23 +772,24 @@ def sim_negLL(thetas, data, model):
     Negative log-likelihood of selected stimuli.
     """
 
+    model = model.upper()
     # Rename to avoid duplicates
-    data = data.rename(columns={f'selCue_{model}':'selCue',
-                                f'prob_{model}':'prob'})
+    data = data.rename(columns={f'selCue_{model}': 'selCue',
+                                f'prob_{model}': 'prob'})
     # Log-likelihood of choice
     loglik_of_choice = []
     # Simulate data
     modelDict = sim_models()
-    if not model.upper() in ['W', 'R']:
-        simData = modelDict[model.upper()](thetas, data)
+    if not model in ['W', 'R']:
+        simData = modelDict[model](thetas, data)
     else:
-        simData = modelDict[model.upper()](data)
+        simData = modelDict[model](data)
     
     for _, trial in simData.iterrows():
         # Model estimated value of model's selected stimulus
         ##SG: Likelihood of left stimulus if model picked left.
             # Otherwise 1-left for likelihood of right stimulus.
-        picked_prob = abs(trial[f'selCue_{model.upper()}'] - 
+        picked_prob = abs(trial[f'selCue_{model}'] - 
                           trial[f'prob_{model}'])
         loglik_of_choice.append(np.log(picked_prob))
 
@@ -821,19 +822,22 @@ def sim_negSpearCor(thetas, data, model):
     negative spearman r
     """
 
+    model = model.upper()
     # Wilhelm and Renee do not simulate RTs.
-    assert not model.upper() in ['W', 'R'], 'Model has no simulated RT'
+    assert not model in ['W', 'R'], 'Model has no simulated RT'
 
     # Rename to avoid duplicates
-    data = data.rename(columns={f'selCue_{model}':'selCue',
-                                f'prob_{model}':'prob'})
+    data = data.rename(columns={f'selCue_{model}': 'selCue',
+                                f'prob_{model}': 'prob',
+                                f'rt_{model}': 'rt',
+                                f'RPE_{model}': 'RPE'})
     # Simulate data
     modelDict = sim_models()
-    simData = modelDict[model.upper()](thetas, data)
+    simData = modelDict[model](thetas, data)
 
     # Correlation between RT and RPE
-    return - stats.spearmanr(simData[f'rt_{model.upper()}'],
-                             simData[f'RPE_{model.upper()}'],
+    return - stats.spearmanr(simData[f'rt_{model}'].to_numpy(),
+                             simData[f'RPE_{model}'].to_numpy(),
                              nan_policy = 'omit')[0]
 
 
