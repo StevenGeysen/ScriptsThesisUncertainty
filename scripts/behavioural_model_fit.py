@@ -10,7 +10,7 @@ Notes:      - Fit models to behavioural data of Marzecova et al. (2019)
                 
 To do:      - Fit models
             - Statistics
-            - Fix RT warning
+            
 Questions:  
             
 Comments:   AM: The data file was merged in R, from the single files generated
