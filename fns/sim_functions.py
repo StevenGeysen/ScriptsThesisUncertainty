@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Simulation functions -- Version 2.2.1
-Last edit:  2022/07/05
+"""     Simulation functions -- Version 2.3
+Last edit:  2022/07/12
 Author(s):  Geysen, Steven (SG)
 Notes:      - Functions used for the simulation of the task used by
                 Marzecova et al. (2019). Both structure and models.
@@ -13,7 +13,7 @@ Notes:      - Functions used for the simulation of the task used by
                 * (negaitve) log likelihood
                 * Negative Spearman correlation
             - Release notes:
-                * Debugged Spearman correlation
+                * Fixed mistake in RT sampling
             
 To do:      - 
             
