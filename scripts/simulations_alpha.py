@@ -56,8 +56,6 @@ plotnr = 0
 
 # Alpha/eta options
 alpha_options = np.linspace(0.01, 1, 40)
-# Beta options
-beta = 15
 
 
 
@@ -73,14 +71,14 @@ for simi in range(N_SIMS):
     ## Select random alpha and beta
     alpha = np.random.choice(alpha_options)
     
-    Daphne = sf.simRW_1c((alpha, beta), exStruc, asm='arg')
-    Hugo = sf.simHybrid_1c((alpha, beta), Daphne, asm='arg')
+    Daphne = sf.simRW_1c(alpha, exStruc, asm='arg')
+    Hugo = sf.simHybrid_1c(alpha, Daphne, asm='arg')
     Wilhelm = sf.simWSLS(Hugo)
     Renee = sf.simRandom(Wilhelm)
     
-    Renee.to_csv(SIM_DIR / f'simModels_alpha_{alpha}_beta_{beta}.csv')
+    Renee.to_csv(SIM_DIR / f'simModels_alpha_{alpha}_armax.csv')
     
-    pf.selplot(Renee, 'rw', plotnr, thetas=(alpha, beta), pp=simi)
+    pf.selplot(Renee, 'rw', plotnr, thetas=alpha, pp=simi)
     plotnr += 1
 
 
@@ -98,38 +96,37 @@ simList = [filei.name for filei in Path.iterdir(SIM_DIR)]
 
 
 # Smallest alpha and beta values left-below
-originalThetas = np.full((len(simList), 2), np.nan)
-gridThetas = np.full((len(simList), 2), np.nan)
+originalThetas = np.full((len(simList), 1), np.nan)
+gridThetas = np.full((len(simList), 1), np.nan)
 
 start_total = time.time()
 for simi, filei in enumerate(simList):
     simData = pd.read_csv(SIM_DIR / filei, index_col='Unnamed: 0')
-    one_totsim_log = np.zeros((len(alpha_options), len(beta)))
+    one_totsim_log = np.zeros((len(alpha_options), 1))
     
     # Thetas from simulation
     stringTheta = re.findall(r"[-+]?(?:\d*\.\d+|\d+)", filei)
     otheta = [float(thetai) for thetai in stringTheta]
-    originalThetas[simi, :] = otheta
+    originalThetas[simi] = otheta
     
     start_sim = time.time()
     for loca, alphai in enumerate(alpha_options):
-        for locb, betai in enumerate(beta):
-            # one_totsim_log[loca, locb] = sf.sim_negLL((alphai, betai), simData,
-            #                                           model='RW')
-            one_totsim_log[loca, locb] = sf.sim_negSpearCor((alphai, betai),
-                                                            simData,
-                                                            model='RW')
+        # one_totsim_log[loca, locb] = sf.sim_negLL((alphai, betai), simData,
+        #                                           model='RW')
+        one_totsim_log[loca] = sf.sim_negSpearCor(alphai,
+                                                  simData,
+                                                  model='RW')
     
     # Optimal values
     maxloc = [i[0] for i in np.where(one_totsim_log == np.min(one_totsim_log))]
-    gridThetas[simi, :] = [alpha_options[maxloc[0]], beta[maxloc[1]]]
+    gridThetas[simi] = alpha_options[maxloc[0]]
     
     print(f'Duration sim {simi}: {round((time.time() - start_sim) / 60, 2)} minutes')
     
     if simi % 2 == 0:
         plt.figure(plotnr)
         fig, ax = plt.subplots()
-        im, _ = pf.heatmap(np.rot90(one_totsim_log), np.round(beta, 3),
+        im, _ = pf.heatmap(np.rot90(one_totsim_log),
                     np.round(alpha_options, 3), ax=ax,
                     row_name='$\u03B2$', col_name='$\u03B1$',
                     cbarlabel='Negative log-likelihood')
@@ -156,14 +153,14 @@ print(stats.ttest_rel(originalThetas[:, 1], gridThetas[:, 1]))
 #-------------------------#
 
 
-nmThetas = np.full((len(simList), 2), np.nan)
+nmThetas = np.full((len(simList), 1), np.nan)
 
 for simi, filei in enumerate(simList):
     simData = pd.read_csv(SIM_DIR / filei, index_col='Unnamed: 0')
-    initial_guess = (np.random.choice(alpha_options), beta)
-    nmThetas[simi, :] = optimize.fmin(sf.sim_negSpearCor, initial_guess,
-                                      args = (simData, 'RW'),
-                                      ftol = 0.001)
+    initial_guess = np.random.choice(alpha_options)
+    nmThetas[simi] = optimize.fmin(sf.sim_negSpearCor, initial_guess,
+                                   args = (simData, 'RW'),
+                                   ftol = 0.001)
     if simi % 2 == 0:
         print(originalThetas[simi])
         print(initial_guess)
