@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Plot functions -- Version 1.3
-Last edit:  2022/07/04
+"""     Plot functions -- Version 1.3.1
+Last edit:  2022/07/05
 Author(s):  Geysen, Steven (SG)
 Notes:      - Functions used to plot output
                 * Heatmap
@@ -195,11 +195,11 @@ def selplot(data, model, plotnr, thetas=None, pp=''):
     models = af.labelDict()
     if not model.upper() in ['W', 'R']:
         if model.upper()[:2] == 'RW':
-            title = f'Cue selection {pp} {models[model.upper()]}: \
-                    $\u03B1$ = {thetas[0]}; $\u03B2$ = {thetas[1]}'
+            model_par = '$\u03B1$'
         else:
-            title = f'Cue selection {pp} {models[model.upper()]}: \
-                    $\u03B1$ = {thetas[0]}; $\u03B7$ = {thetas[1]}'
+            model_par = '$\u03B7$'
+        title = f'Cue selection {pp} {models[model.upper()]}: \
+            {model_par} = {round(thetas[0], 4)}; $\u03B2$ = {round(thetas[1], 4)}'
     # Cue estimates
         plt.plot(data[[f'Qest_0_{model.upper()}']], label = 'Cue 0')
         plt.plot(data[[f'Qest_1_{model.upper()}']], label = 'Cue 1')
@@ -254,11 +254,11 @@ def rt_dist(data, model, thetas, plotnr, pp=''):
     # Set title
     models = af.labelDict()
     if model.upper()[:2] == 'RW':
-        title = f'RT distribution {pp} {models[model.upper()]}: \
-                $\u03B1$ = {thetas[0]}; $\u03B2$ = {thetas[1]}'
+        model_par = '$\u03B1$'
     else:
-        title = f'RT distribution {pp} {models[model.upper()]}: \
-                $\u03B1$ = {thetas[0]}; $\u03B7$ = {thetas[1]}'
+        model_par = '$\u03B7$'
+    title = f'RT distribution {pp} {models[model.upper()]}: \
+        {model_par} = {round(thetas[0], 4)}; $\u03B2$ = {round(thetas[1], 4)}'
     
     plt.figure(plotnr)
     fig, ((ax0, ax1)) = plt.subplots(nrows = 1, ncols = 2)
