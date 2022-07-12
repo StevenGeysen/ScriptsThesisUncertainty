@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Model functions -- Version 2.1
-Last edit:  2022/07/05
+"""     Model functions -- Version 3
+Last edit:  2022/07/12
 Author(s):  Geysen, Steven (SG)
 Notes:      - Models for the ananlysis of behavioural data from
                 Marzecova et al. (2019)
@@ -10,16 +10,12 @@ Notes:      - Models for the ananlysis of behavioural data from
                     - Rescorla-Wagner - Pearce-Hall hybrid (Hugo)
                     - Win-stay-lose-shift (Wilhelm)
                     - Random (Renee)
-                * (negaitve) log likelihood
                 * Negative Spearman correlation
             - Release notes:
-                * Policy function with argmax and SoftMax in af
+                * Removed (negaitve) log likelihood
 To do:      - Adjust models to behavioural data
             
-Questions:  - How do I update the models? Do I use the validity of the
-                participant's selection, or do I use the validity of the
-                model's selection?
-            - How do I know the participant's selection?
+Questions:  
 Comments:   SG: Models return pandas.DataFrame. Model functions return
                 originale data with model selection appended.
             
@@ -594,54 +590,6 @@ def ppRandom(data):
 ####################
 
 
-def pp_negLL(thetas, data, model):
-    """
-    Negative log-likelihood of choice based on RW predictions of simulations
-
-    Parameters
-    ----------
-    thetas : list, array, tuple
-        Parameter values.
-    data : pd.DataFrame
-        Prepared data of participant, containing structure of experiment.
-        Doesn't need to go through rescon first.
-    model : string
-        Name of the used model:
-            RW - Rescorla-Wagner
-            H - RW-PH hybrid
-            W - Win-stay-lose-shift
-            R - Random
-
-    Returns
-    -------
-    Negative log-likelihood of selected stimuli.
-    """
-
-    # Rename to avoid duplicates
-    data = data.rename(columns={f'selCue_{model}':'selCue',
-                                f'prob_{model}':'prob'})
-    # Log-likelihood of choice
-    loglik_of_choice = []
-    # Simulate data
-    modelDict = pp_models()
-    if not model.upper() in ['W', 'R']:
-        simData = modelDict[model.upper()](thetas, data)
-    else:
-        simData = modelDict[model.upper()](data)
-    
-    for _, trial in simData.iterrows():
-        # Model estimated value of model's selected stimulus
-        ##SG: Likelihood of left stimulus if model picked left.
-            # Otherwise 1-left for likelihood of right stimulus.
-        picked_prob = abs(trial[f'selCue_{model.upper()}'] - 
-                          trial[f'prob_{model}'])
-        loglik_of_choice.append(np.log(picked_prob))
-
-    # Return negative log likelihood
-    # return -1 * np.nansum(loglik_of_choice)
-    return np.nansum(loglik_of_choice)
-
-
 def pp_negSpearCor(thetas, data, model):
     """
     Negative Spearman correlation of learning model of reaction time and
@@ -666,19 +614,21 @@ def pp_negSpearCor(thetas, data, model):
     negative spearman r
     """
 
+    model = model.upper()
     # Wilhelm and Renee do not have reward prediction errors.
-    assert not model.upper() in ['W', 'R'], 'Model has no RPE'
+    assert not model in ['W', 'R'], 'Model has no RPE'
 
     # Rename to avoid duplicates
-    data = data.rename(columns={f'selCue_{model}':'selCue',
-                                f'prob_{model}':'prob'})
+    data = data.rename(columns={f'selCue_{model}': 'selCue',
+                                f'prob_{model}': 'prob',
+                                f'RPE_{model}': 'RPE'})
     # Simulate data
     modelDict = pp_models()
-    simData = modelDict[model.upper()](thetas, data)
+    simData = modelDict[model](thetas, data)
 
     # Correlation between RT and RPE
-    return - stats.spearmanr(simData['RT'],
-                             simData[f'RPE_{model.upper()}'],
+    return - stats.spearmanr(simData['RT'].to_numpy(),
+                             simData[f'RPE_{model}'].to_numpy(),
                              nan_policy = 'omit')[0]
 
 
