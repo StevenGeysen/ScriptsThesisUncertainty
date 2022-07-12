@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Behavioural model fit -- Version 1
-Last edit:  2022/07/04
+"""     Behavioural model fit -- Version 1.2
+Last edit:  2022/07/12
 Author(s):  Geysen, Steven (SG)
 Notes:      - Fit models to behavioural data of Marzecova et al. (2019)
             - Release notes:
@@ -140,34 +140,13 @@ for ppi in range(npp):
 #####################
 
 
-#%% ~~ Nelder - Mead ~~ %%#
-#-------------------------#
-
-
-x0 = (0.5, 10)
-estThetas = np.full((npp, 2), np.nan)
-
-for ppi in range(npp):
-    ## Skip pp6 (not in data)
-    if ppi + 1 == 6:
-        continue
-    ## Use only data from pp
-    pp_data = un_data[un_data['id'] == ppi + 1]
-    pp_data.reset_index(drop=True, inplace=True)
-    
-    estThetas[ppi, :] = optimize.fmin(bf.pp_negSpearCor, x0,
-                                      args = (pp_data, 'RW'),
-                                      ftol = 0.001)
-
-
-
 #%% ~~ Grid search ~~ %%#
 #-----------------------#
 
 
 # Smallest alpha and beta values left-below
 plotbetas = np.flip(beta_options)
-newTheta = np.zeros(npp, 2)
+gridThetas = np.full((npp, 2), np.nan)
 
 start_total = time.time()
 for ppi in range(npp):
@@ -183,14 +162,13 @@ for ppi in range(npp):
     start_pp = time.time()
     for loca, alphai in enumerate(alpha_options):
         for locb, betai in enumerate(beta_options):
-            one_totpp_log[loca, locb] = bf.pp_negLL((alphai, betai), pp_data,
-                                                      model='RW')
+            one_totpp_log[loca, locb] = bf.pp_negSpearCor((alphai, betai),
+                                                          pp_data,
+                                                          model='RW')
     
     # Optimal values
     maxloc=[i[0] for i in np.where(one_totpp_log == np.min(one_totpp_log))]
-    # newTheta.append(np.round([alphaOptions[maxloc[0]], betaOptions[maxloc[1]]], 5))
-    # newTheta.append([alphaOptions[maxloc[0]], betaOptions[maxloc[1]]])
-    newTheta[ppi -1, :] = [alpha_options[maxloc[0]], beta_options[maxloc[1]]]
+    gridThetas[ppi -1, :] = [alpha_options[maxloc[0]], beta_options[maxloc[1]]]
     
     print(f'Duration pp {ppi}: {round((time.time() - start_pp) / 60, 2)} minutes')
     
@@ -200,14 +178,35 @@ for ppi in range(npp):
         im, _ = pf.heatmap(np.rot90(one_totpp_log), np.round(plotbetas, 3),
                     np.round(alpha_options, 3), ax=ax,
                     row_name='$\u03B2$', col_name='$\u03B1$',
-                    cbarlabel='Negative log-likelihood')
+                    cbarlabel='Negative Spearman Correlation')
         
-        plt.suptitle(f'Grid search log-likelihood of choice for simulation {ppi}')
+        plt.suptitle(f'Grid search Negative Spearman Correlation of choice for participant {ppi}')
         plt.show()
         plotnr += 1
         
-        print(newTheta[-1])
+        print(gridThetas[ppi - 1])
 print(f'Duration total: {round((time.time() - start_total) / 60, 2)} minutes')
+
+
+
+#%% ~~ Nelder - Mead ~~ %%#
+#-------------------------#
+
+
+x0 = (0.5, 10)
+nmThetas = np.full((npp, 2), np.nan)
+
+for ppi in range(npp):
+    ## Skip pp6 (not in data)
+    if ppi + 1 == 6:
+        continue
+    ## Use only data from pp
+    pp_data = un_data[un_data['id'] == ppi + 1]
+    pp_data.reset_index(drop=True, inplace=True)
+    
+    nmThetas[ppi, :] = optimize.fmin(bf.pp_negSpearCor, x0,
+                                      args = (pp_data, 'RW'),
+                                      ftol = 0.001)
 
 
 
