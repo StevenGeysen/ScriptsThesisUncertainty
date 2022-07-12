@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Simulations -- Version 2.2.1
+"""     Simulations: Alpha recovery -- Version 1
 Last edit:  2022/07/12
 Author(s):  Geysen, Steven (SG)
 Notes:      - Simulations of the task used by Marzecova et al. (2019)
@@ -57,7 +57,7 @@ plotnr = 0
 # Alpha/eta options
 alpha_options = np.linspace(0.01, 1, 40)
 # Beta options
-beta_options = np.linspace(0.1, 20, 40)
+beta = 15
 
 
 
@@ -72,10 +72,9 @@ for simi in range(N_SIMS):
     # Sample data
     ## Select random alpha and beta
     alpha = np.random.choice(alpha_options)
-    beta = np.random.choice(beta_options)
     
-    Daphne = sf.simRW_1c((alpha, beta), exStruc)
-    Hugo = sf.simHybrid_1c((alpha, beta), Daphne)
+    Daphne = sf.simRW_1c((alpha, beta), exStruc, asm='arg')
+    Hugo = sf.simHybrid_1c((alpha, beta), Daphne, asm='arg')
     Wilhelm = sf.simWSLS(Hugo)
     Renee = sf.simRandom(Wilhelm)
     
@@ -99,14 +98,13 @@ simList = [filei.name for filei in Path.iterdir(SIM_DIR)]
 
 
 # Smallest alpha and beta values left-below
-plotbetas = np.flip(beta_options)
 originalThetas = np.full((len(simList), 2), np.nan)
 gridThetas = np.full((len(simList), 2), np.nan)
 
 start_total = time.time()
 for simi, filei in enumerate(simList):
     simData = pd.read_csv(SIM_DIR / filei, index_col='Unnamed: 0')
-    one_sim = np.full((len(alpha_options), len(beta_options)), np.nan)
+    one_totsim_log = np.zeros((len(alpha_options), len(beta)))
     
     # Thetas from simulation
     stringTheta = re.findall(r"[-+]?(?:\d*\.\d+|\d+)", filei)
@@ -115,28 +113,28 @@ for simi, filei in enumerate(simList):
     
     start_sim = time.time()
     for loca, alphai in enumerate(alpha_options):
-        for locb, betai in enumerate(beta_options):
-            # one_sim[loca, locb] = sf.sim_negLL((alphai, betai), simData,
+        for locb, betai in enumerate(beta):
+            # one_totsim_log[loca, locb] = sf.sim_negLL((alphai, betai), simData,
             #                                           model='RW')
-            one_sim[loca, locb] = sf.sim_negSpearCor((alphai, betai),
+            one_totsim_log[loca, locb] = sf.sim_negSpearCor((alphai, betai),
                                                             simData,
                                                             model='RW')
     
     # Optimal values
-    maxloc = [i[0] for i in np.where(one_sim == np.min(one_sim))]
-    gridThetas[simi, :] = [alpha_options[maxloc[0]], beta_options[maxloc[1]]]
+    maxloc = [i[0] for i in np.where(one_totsim_log == np.min(one_totsim_log))]
+    gridThetas[simi, :] = [alpha_options[maxloc[0]], beta[maxloc[1]]]
     
     print(f'Duration sim {simi}: {round((time.time() - start_sim) / 60, 2)} minutes')
     
     if simi % 2 == 0:
         plt.figure(plotnr)
         fig, ax = plt.subplots()
-        im, _ = pf.heatmap(np.rot90(one_sim), np.round(plotbetas, 3),
+        im, _ = pf.heatmap(np.rot90(one_totsim_log), np.round(beta, 3),
                     np.round(alpha_options, 3), ax=ax,
                     row_name='$\u03B2$', col_name='$\u03B1$',
-                    cbarlabel='Negative Spearman Correlation')
+                    cbarlabel='Negative log-likelihood')
         
-        plt.suptitle(f'Grid search Negative Spearman Correlation of choice for simulation {simi}')
+        plt.suptitle(f'Grid search log-likelihood of choice for simulation {simi}')
         plt.show()
         plotnr += 1
         
@@ -162,8 +160,7 @@ nmThetas = np.full((len(simList), 2), np.nan)
 
 for simi, filei in enumerate(simList):
     simData = pd.read_csv(SIM_DIR / filei, index_col='Unnamed: 0')
-    initial_guess = (np.random.choice(alpha_options),
-                     np.random.choice(beta_options))
+    initial_guess = (np.random.choice(alpha_options), beta)
     nmThetas[simi, :] = optimize.fmin(sf.sim_negSpearCor, initial_guess,
                                       args = (simData, 'RW'),
                                       ftol = 0.001)

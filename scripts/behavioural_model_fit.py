@@ -156,18 +156,18 @@ for ppi in range(npp):
     ## Use only data from pp
     pp_data = un_data[un_data['id'] == ppi + 1]
     
-    one_totpp_log = np.zeros((len(alpha_options), len(beta_options)))
+    one_totpp = np.zeros((len(alpha_options), len(beta_options)))
     
     
     start_pp = time.time()
     for loca, alphai in enumerate(alpha_options):
         for locb, betai in enumerate(beta_options):
-            one_totpp_log[loca, locb] = bf.pp_negSpearCor((alphai, betai),
+            one_totpp[loca, locb] = bf.pp_negSpearCor((alphai, betai),
                                                           pp_data,
                                                           model='RW')
     
     # Optimal values
-    maxloc=[i[0] for i in np.where(one_totpp_log == np.min(one_totpp_log))]
+    maxloc=[i[0] for i in np.where(one_totpp == np.min(one_totpp))]
     gridThetas[ppi -1, :] = [alpha_options[maxloc[0]], beta_options[maxloc[1]]]
     
     print(f'Duration pp {ppi}: {round((time.time() - start_pp) / 60, 2)} minutes')
@@ -175,7 +175,7 @@ for ppi in range(npp):
     if ppi % 2 == 0:
         plt.figure(plotnr)
         fig, ax = plt.subplots()
-        im, _ = pf.heatmap(np.rot90(one_totpp_log), np.round(plotbetas, 3),
+        im, _ = pf.heatmap(np.rot90(one_totpp), np.round(plotbetas, 3),
                     np.round(alpha_options, 3), ax=ax,
                     row_name='$\u03B2$', col_name='$\u03B1$',
                     cbarlabel='Negative Spearman Correlation')
@@ -193,7 +193,6 @@ print(f'Duration total: {round((time.time() - start_total) / 60, 2)} minutes')
 #-------------------------#
 
 
-x0 = (0.5, 10)
 nmThetas = np.full((npp, 2), np.nan)
 
 for ppi in range(npp):
@@ -204,9 +203,14 @@ for ppi in range(npp):
     pp_data = un_data[un_data['id'] == ppi + 1]
     pp_data.reset_index(drop=True, inplace=True)
     
-    nmThetas[ppi, :] = optimize.fmin(bf.pp_negSpearCor, x0,
+    initial_guess = (np.random.choice(alpha_options),
+                     np.random.choice(beta_options))
+    nmThetas[ppi, :] = optimize.fmin(bf.pp_negSpearCor, initial_guess,
                                       args = (pp_data, 'RW'),
                                       ftol = 0.001)
+    if ppi % 2 == 0:
+        print(initial_guess)
+        print(nmThetas[ppi])
 
 
 
