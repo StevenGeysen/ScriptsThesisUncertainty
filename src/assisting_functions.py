@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """     Assisting functions -- Version 1.1
-Last edit:  2022/07/05
+Last edit:  2022/07/06
 Author(s):  Geysen, Steven (SG)
 Notes:      - Assisting functions to reduce repetition in other functions
                 * labelDict
@@ -23,9 +23,6 @@ Sources:    https://goodresearch.dev/setup.html
 
 import numpy as np
 import pandas as pd
-
-import src.behavioural_functions as bf
-import src.sim_functions as sf
 
 
 
