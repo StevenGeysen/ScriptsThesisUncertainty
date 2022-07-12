@@ -66,8 +66,8 @@ import numpy as np
 import pandas as pd
 
 import matplotlib.pyplot as plt
-import src.plot_functions as pf
-import src.behavioural_functions as bf
+import fns.plot_functions as pf
+import fns.behavioural_functions as bf
 
 from pathlib import Path
 from scipy import optimize, stats

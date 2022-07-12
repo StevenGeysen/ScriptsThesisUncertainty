@@ -28,8 +28,8 @@ import numpy as np
 import pandas as pd
 
 import matplotlib.pyplot as plt
-import src.plot_functions as pf
-import src.sim_functions as sf
+import fns.plot_functions as pf
+import fns.sim_functions as sf
 
 from pathlib import Path
 from scipy import optimize, stats

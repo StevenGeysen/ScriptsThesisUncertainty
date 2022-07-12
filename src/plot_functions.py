@@ -28,7 +28,7 @@ import matplotlib
 import numpy as np
 
 import matplotlib.pyplot as plt
-import src.assisting_functions as af
+import fns.assisting_functions as af
 
 
 

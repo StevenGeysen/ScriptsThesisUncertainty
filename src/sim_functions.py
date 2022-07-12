@@ -37,7 +37,7 @@ Sources:    https://www.frontiersin.org/articles/10.3389/fpsyg.2018.00612/full
 import numpy as np
 import pandas as pd
 
-import src.assisting_functions as af
+import fns.assisting_functions as af
 
 from scipy import stats
 

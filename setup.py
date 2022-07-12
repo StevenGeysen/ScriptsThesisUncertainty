@@ -16,6 +16,6 @@ Sources:     https://goodresearch.dev/setup.html#install-a-project-package
 from setuptools import find_packages, setup
 
 setup(
-    name='src',
+    name='fns',
     packages=find_packages(),
 )
