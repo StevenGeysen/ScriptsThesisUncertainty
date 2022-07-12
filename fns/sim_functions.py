@@ -154,19 +154,18 @@ def sim_experiment(simnr=1, ntrials=640, nswitch=7):
 ####################
 
 
-def sim_rt(selcue, probcue):
+def sim_rt(rpe):
     """
     Simulate response times
     Response times, sampled from ExGaussian distribution. Sigma and mu are
-    taken from exgauss fit of the original data. Tau is the probability of the
-    selected cue, used as proxy for difficulty.
+    taken from exgauss fit of the original data. Tau is the reward prediction
+    error of the selected cue, used as proxy for difficulty (absolute values to
+    avoid errors caused by negative values).
 
     Parameters
     ----------
-    selcue : int
-        Selected cue.
-    probcue : float
-        Probability that cue 0 is selected.
+    rpe : int
+        Reward prediction error of the selected cue.
 
     Returns
     -------
@@ -176,7 +175,7 @@ def sim_rt(selcue, probcue):
 
     try:
         ##SG: K = tau / sigma, loc = mu, scale = sigma.
-        RT = stats.exponnorm.rvs(K = abs(selcue - probcue) / 0.02635,
+        RT = stats.exponnorm.rvs(K = abs(rpe) / 0.02635,
                                  loc = 0.3009, scale = 0.02635)
     except:
         RT = np.nan
@@ -243,7 +242,7 @@ def simRW_1c(parameters, data, asm='soft'):
     """
 
     # Variables
-    #----------
+    # ---------
     # Dataframe
     var_list = [
         'selCue_RW', 'prob_RW', 'rt_RW', 'reward_RW',
@@ -266,7 +265,7 @@ def simRW_1c(parameters, data, asm='soft'):
     # Trial loop
     for triali, trial in data.iterrows():
         # Policy
-        #-------
+        # ------
         ## Random for first trial
         if triali == 0:
             selcue = np.random.randint(N_CUES)
@@ -277,17 +276,15 @@ def simRW_1c(parameters, data, asm='soft'):
         simDict['selCue_RW'].append(selcue)
         simDict['prob_RW'].append(probcue)
         
-        # Response time
-        simDict['rt_RW'].append(sim_rt(selcue, probcue))
-        
-        # Reward calculations
+        # Reward
+        # ------
         ## Based on validity
         ##AM: If cue==target reward = 1, if cue!=target reward = 0
         reward = int(selcue == trial.targetLoc)
         simDict['reward_RW'].append(reward)
         
         # Update rule (RW)
-        #-----------------
+        # ----------------
         if triali == 0:
             # Reward prediction error
             rpe = reward - Q_est[triali, selcue]
@@ -304,6 +301,9 @@ def simRW_1c(parameters, data, asm='soft'):
         simDict['RPE_RW'].append(rpe)
         for qi, q_est in enumerate(Q_est[triali, :]):
             simDict[f'Qest_{qi}_RW'].append(q_est)
+        
+        # Response time
+        simDict['rt_RW'].append(sim_rt(rpe))
 
     return af.save_data(simDict, data, var_list)
 
@@ -344,7 +344,7 @@ def simHybrid_1c(parameters, data, salpha=0.01, asm='soft'):
     """
 
     # Variables
-    #----------
+    # ---------
     # Dataframe
     var_list = [
         'selCue_H', 'prob_H', 'rt_H', 'reward_H', 'alpha_H',
@@ -369,7 +369,8 @@ def simHybrid_1c(parameters, data, salpha=0.01, asm='soft'):
 
     # Trial loop
     for triali, trial in data.iterrows():
-        # Select cue
+        # Policy
+        # ------
         ## Random for first trial
         if triali == 0:
             selcue = np.random.randint(N_CUES)
@@ -380,17 +381,15 @@ def simHybrid_1c(parameters, data, salpha=0.01, asm='soft'):
         simDict['selCue_H'].append(selcue)
         simDict['prob_H'].append(probcue)
         
-        # Response time
-        simDict['rt_H'].append(sim_rt(selcue, probcue))
-        
-        # Reward calculations
+        # Reward
+        # ------
         ## Based on validity
         ##AM: If cue==target reward = 1, if cue!=target reward = 0
         reward = int(selcue == trial.targetLoc)
         simDict['reward_H'].append(reward)
         
         # Hybrid
-        #-------
+        # ------
         if triali == 0:
             # Reward prediction error
             rpe = reward - Q_est[triali, selcue]
@@ -416,6 +415,9 @@ def simHybrid_1c(parameters, data, salpha=0.01, asm='soft'):
         simDict['alpha_H'].append(alpha[triali, selcue])
         for qi, q_est in enumerate(Q_est[triali, :]):
             simDict[f'Qest_{qi}_H'].append(q_est)
+        
+        # Response time
+        simDict['rt_H'].append(sim_rt(rpe))
 
     return af.save_data(simDict, data, var_list)
 
@@ -458,7 +460,7 @@ def simRW_2c(parameters, data, asm='soft'):
     """
 
     # Variables
-    #----------
+    # ---------
     # Dataframe
     var_list = [
         'selCue_RW2', 'prob_RW2', 'rt_RW2', 'reward_RW2',
@@ -481,7 +483,7 @@ def simRW_2c(parameters, data, asm='soft'):
     # Trial loop
     for triali, trial in data.iterrows():
         # Policy
-        #-------
+        # ------
         ## Random for first trial
         if triali == 0:
             selcue = np.random.randint(N_CUES)
@@ -492,17 +494,15 @@ def simRW_2c(parameters, data, asm='soft'):
         simDict['selCue_RW2'].append(selcue)
         simDict['prob_RW2'].append(probcue)
         
-        # Response time
-        simDict['rt_RW2'].append(sim_rt(selcue, probcue))
-        
-        # Reward calculations
+        # Reward
+        # ------
         ## Based on validity
         ##AM: If cue==target reward = 1, if cue!=target reward = 0
         reward = int(selcue == trial.targetLoc)
         simDict['reward_RW2'].append(reward)
         
         # Update rule (RW)
-        #-----------------
+        # ----------------
         if triali == 0:
             for cuei in range(N_CUES):
                 # Reward prediction error
@@ -520,6 +520,9 @@ def simRW_2c(parameters, data, asm='soft'):
         simDict['RPE_RW2'].append(reward - Q_est[triali - 1, selcue])
         for qi, q_est in enumerate(Q_est[triali, :]):
             simDict[f'Qest_{qi}_RW2'].append(q_est)
+        
+        # Response time
+        simDict['rt_RW2'].append(sim_rt(rpe))
 
     return af.save_data(simDict, data, var_list)
 
@@ -585,7 +588,8 @@ def simHybrid_2c(parameters, data, salpha=0.01, asm='soft'):
 
     # Trial loop
     for triali, trial in data.iterrows():
-        # Select cue
+        # Policy
+        # ------
         ## Random for first trial
         if triali == 0:
             selcue = np.random.randint(N_CUES)
@@ -596,17 +600,15 @@ def simHybrid_2c(parameters, data, salpha=0.01, asm='soft'):
         simDict['selCue_H2'].append(selcue)
         simDict['prob_H2'].append(probcue)
         
-        # Response time
-        simDict['rt_H2'].append(sim_rt(selcue, probcue))
-        
-        # Reward calculations
+        # Reward
+        # ------
         ## Based on validity
         ##AM: If cue==target reward = 1, if cue!=target reward = 0
         reward = int(selcue == trial.targetLoc)
         simDict['reward_H2'].append(reward)
         
         # Hybrid
-        #-------
+        # ------
         if triali == 0:
             for cuei in range(N_CUES):
                 # Reward prediction error
@@ -633,6 +635,9 @@ def simHybrid_2c(parameters, data, salpha=0.01, asm='soft'):
         simDict['alpha_H2'].append(alpha[triali, selcue])
         for qi, q_est in enumerate(Q_est[triali, :]):
             simDict[f'Qest_{qi}_H2'].append(q_est)
+        
+        # Response time
+        simDict['rt_H2'].append(sim_rt(rpe))
 
     return af.save_data(simDict, data, var_list)
 
@@ -681,7 +686,7 @@ def simWSLS(data):
     # Trial loop
     for triali, trial in data.iterrows():
         # Policy
-        #-------
+        # ------
         ## Random for first trial
         if triali == 0:
             selcues[triali] = np.random.randint(N_CUES)

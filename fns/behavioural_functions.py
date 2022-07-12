@@ -100,7 +100,7 @@ def ppRW_1c(parameters, data, asm='soft'):
     """
 
     # Variables
-    #----------
+    # ---------
     # Dataframe
     var_list = [
         'selCue_RW', 'prob_RW', 'reward_RW',
@@ -123,7 +123,7 @@ def ppRW_1c(parameters, data, asm='soft'):
     # Trial loop
     for triali, trial in data.iterrows():
         # Policy
-        #-------
+        # ------
         ## Random for first trial
         if triali == 0:
             selcue = np.random.randint(N_CUES)
@@ -134,14 +134,15 @@ def ppRW_1c(parameters, data, asm='soft'):
         ppDict['selCue_RW'].append(selcue)
         ppDict['prob_RW'].append(probcue)
         
-        # Reward calculations
+        # Reward
+        # ------
         ## Based on validity
         ##AM: If cue==target reward = 1, if cue!=target reward = 0
         reward = int(selcue == trial.targetLoc)
         ppDict['reward_RW'].append(reward)
         
         # Update rule (RW)
-        #-----------------
+        # ----------------
         if triali == 0:
             # Reward prediction error
             rpe = reward - Q_est[triali, selcue]
@@ -197,7 +198,7 @@ def ppHybrid_1c(parameters, data, salpha=0.01, asm='soft'):
     """
 
     # Variables
-    #----------
+    # ---------
     # Dataframe
     var_list = [
         'selCue_H', 'prob_H', 'reward_H', 'alpha_H',
@@ -222,7 +223,8 @@ def ppHybrid_1c(parameters, data, salpha=0.01, asm='soft'):
 
     # Trial loop
     for triali, trial in data.iterrows():
-        # Select cue
+        # Policy
+        # ------
         ## Random for first trial
         if triali == 0:
             selcue = np.random.randint(N_CUES)
@@ -233,14 +235,15 @@ def ppHybrid_1c(parameters, data, salpha=0.01, asm='soft'):
         ppDict['selCue_H'].append(selcue)
         ppDict['prob_H'].append(probcue)
         
-        # Reward calculations
+        # Reward
+        # ------
         ## Based on validity
         ##AM: If cue==target reward = 1, if cue!=target reward = 0
         reward = int(selcue == trial.targetLoc)
         ppDict['reward_H'].append(reward)
         
         # Hybrid
-        #-------
+        # ------
         if triali == 0:
             # Reward prediction error
             rpe = reward - Q_est[triali, selcue]
@@ -306,7 +309,7 @@ def ppRW_2c(parameters, data, asm='soft'):
     """
 
     # Variables
-    #----------
+    # ---------
     # Dataframe
     var_list = [
         'selCue_RW2', 'prob_RW2', 'reward_RW2',
@@ -329,7 +332,7 @@ def ppRW_2c(parameters, data, asm='soft'):
     # Trial loop
     for triali, trial in data.iterrows():
         # Policy
-        #-------
+        # ------
         ## Random for first trial
         if triali == 0:
             selcue = np.random.randint(N_CUES)
@@ -340,14 +343,15 @@ def ppRW_2c(parameters, data, asm='soft'):
         ppDict['selCue_RW2'].append(selcue)
         ppDict['prob_RW2'].append(probcue)
         
-        # Reward calculations
+        # Reward
+        # ------
         ## Based on validity
         ##AM: If cue==target reward = 1, if cue!=target reward = 0
         reward = int(selcue == trial.targetLoc)
         ppDict['reward_RW2'].append(reward)
         
         # Update rule (RW)
-        #-----------------
+        # ----------------
         if triali == 0:
             for cuei in range(N_CUES):
                 # Reward prediction error
@@ -404,7 +408,7 @@ def ppHybrid_2c(parameters, data, salpha=0.01, asm='soft'):
     """
 
     # Variables
-    #----------
+    # ---------
     # Dataframe
     var_list = [
         'selCue_H2', 'prob_H2', 'reward_H2', 'alpha_H2',
@@ -429,7 +433,8 @@ def ppHybrid_2c(parameters, data, salpha=0.01, asm='soft'):
 
     # Trial loop
     for triali, trial in data.iterrows():
-        # Select cue
+        # Policy
+        # ------
         ## Random for first trial
         if triali == 0:
             selcue = np.random.randint(N_CUES)
@@ -440,7 +445,8 @@ def ppHybrid_2c(parameters, data, salpha=0.01, asm='soft'):
         ppDict['selCue_H2'].append(selcue)
         ppDict['prob_H2'].append(probcue)
         
-        # Reward calculations
+        # Reward
+        # ------
         ## Based on validity
         ##AM: If cue==target reward = 1, if cue!=target reward = 0
         reward = int(selcue == trial.targetLoc)
@@ -522,7 +528,7 @@ def ppWSLS(data):
     # Trial loop
     for triali, trial in data.iterrows():
         # Policy
-        #-------
+        # ------
         ## Random for first trial
         if triali == 0:
             selcues[triali] = np.random.randint(N_CUES)
@@ -531,7 +537,8 @@ def ppWSLS(data):
                 selcues[triali] = selcues[triali - 1]
             else:
                 selcues[triali] = 1 - selcues[triali - 1]
-        # Reward calculations
+        # Reward
+        # ------
         ## Based on validity
         ##AM: If cue==target reward = 1, if cue!=target reward = 0
         reward = int(selcues[triali] == trial.targetLoc)
