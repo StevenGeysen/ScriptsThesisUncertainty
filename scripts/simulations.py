@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Simulations -- Version 2.2.1
-Last edit:  2022/07/12
+"""     Simulations -- Version 3.1
+Last edit:  2022/07/14
 Author(s):  Geysen, Steven (SG)
 Notes:      - Simulations of the task used by Marzecova et al. (2019)
             - Release notes:
-                * Worked on grid search
+                * Optimal thetas
+                * Learning curve
+                * Stay behaviour
                 
 To do:      - Nelder-Mead
             - Explore models
@@ -14,6 +16,7 @@ Questions:
 Comments:   
             
 Sources:    https://elifesciences.org/articles/49547
+            https://stackoverflow.com/a/41399555
 """
 
 
@@ -51,6 +54,10 @@ if not Path.exists(SIM_DIR):
 
 # Number of simulations
 N_SIMS = 10
+# Number of iterations
+N_ITERS = 10
+# Models with optimiseable parameters
+MDLS = ['RW', 'H']
 # Plot number
 plotnr = 0
 
@@ -58,6 +65,7 @@ plotnr = 0
 alpha_options = np.linspace(0.01, 1, 40)
 # Beta options
 beta_options = np.linspace(0.1, 20, 40)
+plotbetas = np.flip(beta_options)
 
 
 
@@ -65,33 +73,87 @@ beta_options = np.linspace(0.1, 20, 40)
 #############################
 
 
+# Create experimental structure to train models on
+exStruc = sf.sim_experiment()
+## Switch points
+lag_relCueCol = exStruc.relCueCol.eq(exStruc.relCueCol.shift())
+switches = np.where(lag_relCueCol == False)[0][1:]
+
 for simi in range(N_SIMS):
-    # Create experimental structure
-    exStruc = sf.sim_experiment(simnr=simi)
-    
-    # Sample data
+    # Sample values
     ## Select random alpha and beta
     alpha = np.random.choice(alpha_options)
     beta = np.random.choice(beta_options)
-    
+    # Models
     Daphne = sf.simRW_1c((alpha, beta), exStruc)
     Hugo = sf.simHybrid_1c((alpha, beta), Daphne)
     Wilhelm = sf.simWSLS(Hugo)
     Renee = sf.simRandom(Wilhelm)
     
-    Renee.to_csv(SIM_DIR / f'simModels_alpha_{alpha}_beta_{beta}.csv')
+    Renee.to_csv(SIM_DIR / f'simData_alpha_{alpha}_beta_{beta}.csv')
     
-    pf.selplot(Renee, 'rw', plotnr, thetas=(alpha, beta), pp=simi)
+    # pf.selplot(Renee, 'rw', plotnr, thetas=(alpha, beta), pp=simi)
+    # plotnr += 1
+
+simList = [filei.name for filei in Path.iterdir(SIM_DIR)]
+
+
+
+#%% ~~ Exploration ~~ %%#
+#########################
+
+
+#%% ~~ Optimal thetas ~~ %%#
+#--------------------------#
+
+
+OptimalThetas = np.full((2, 2), np.nan)
+negCors = np.zeros((len(alpha_options), len(beta_options), len(MDLS)))
+
+for iti in range(N_ITERS):
+    for loca, alphai in enumerate(alpha_options):
+        for locb, betai in enumerate(beta_options):
+            for locm, modeli in enumerate(MDLS):
+                negCors[loca, locb, locm] += sf.sim_negSpearCor((alphai, betai),
+                                                                exStruc,
+                                                                model=modeli)
+negCors /= N_ITERS
+# Optimal values
+for locm, modeli in enumerate(MDLS):
+    maxloc = [i[0] for i in np.where(
+        negCors[:, :, locm] == np.min(negCors[:, :, locm]))]
+    OptimalThetas[locm, :] = [alpha_options[maxloc[0]],
+                              beta_options[maxloc[1]]]
+    
+    plt.figure(plotnr)
+    fig, ax = plt.subplots()
+    im, _ = pf.heatmap(np.rot90(negCors[:, :, locm]), np.round(plotbetas, 3),
+                np.round(alpha_options, 3), ax=ax,
+                row_name='$\u03B2$', col_name='$\u03B1$',
+                cbarlabel='Negative Spearman Correlation')
+    
+    plt.suptitle(f'Negative Spearman Correlation: Optimal values {modeli}')
+    plt.show()
     plotnr += 1
+
+
+
+#%% ~~ Plots ~~ %%#
+#-----------------#
+
+
+# Learning curve
+pf.learning_curve(simList, SIM_DIR, plotnr)
+plotnr += 1
+
+# Stay behaviour
+pf.p_stay(simList, SIM_DIR, plotnr)
+plotnr += 1
 
 
 
 #%% ~~ Fitting ~~ %%#
 #####################
-
-
-simList = [filei.name for filei in Path.iterdir(SIM_DIR)]
-
 
 
 #%% ~~ Grid search ~~ %%#
@@ -106,7 +168,7 @@ gridThetas = np.full((len(simList), 2), np.nan)
 start_total = time.time()
 for simi, filei in enumerate(simList):
     simData = pd.read_csv(SIM_DIR / filei, index_col='Unnamed: 0')
-    one_sim = np.full((len(alpha_options), len(beta_options)), np.nan)
+    one_sim = np.zeros((len(alpha_options), len(beta_options)))
     
     # Thetas from simulation
     stringTheta = re.findall(r"[-+]?(?:\d*\.\d+|\d+)", filei)
@@ -116,11 +178,14 @@ for simi, filei in enumerate(simList):
     start_sim = time.time()
     for loca, alphai in enumerate(alpha_options):
         for locb, betai in enumerate(beta_options):
-            # one_sim[loca, locb] = sf.sim_negLL((alphai, betai), simData,
-            #                                           model='RW')
-            one_sim[loca, locb] = sf.sim_negSpearCor((alphai, betai),
-                                                            simData,
-                                                            model='RW')
+            for iti in range(N_ITERS):
+                # one_sim[loca, locb] = sf.sim_negLL((alphai, betai), simData,
+                #                                           model='RW')
+                one_sim[loca, locb] += sf.sim_negSpearCor((alphai, betai),
+                                                                simData,
+                                                                model='RW')
+            one_sim[loca, locb] /= N_ITERS
+            # one_sim[loca, locb] = one_sim[loca, locb] / N_ITERS
     
     # Optimal values
     maxloc = [i[0] for i in np.where(one_sim == np.min(one_sim))]
