@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Simulations: Alpha recovery -- Version 1
-Last edit:  2022/07/12
+"""     Simulations: Alpha recovery -- Version 1.1.1
+Last edit:  2022/07/16
 Author(s):  Geysen, Steven (SG)
 Notes:      - Simulations of the task used by Marzecova et al. (2019)
             - Release notes:
@@ -38,48 +38,81 @@ from scipy import optimize, stats
 # Directories
 SPINE = Path.cwd().parent
 OUT_DIR = SPINE / 'results'
-if not Path.exists(OUT_DIR):
-    Path.mkdir(OUT_DIR)
 SIM_DIR = OUT_DIR / 'simulations'
-if not Path.exists(SIM_DIR):
-    Path.mkdir(SIM_DIR)
 
 
 
 #%% ~~ Variables ~~ %%#
 
 
-# Number of simulations
-N_SIMS = 10
+# Filenames of simulated data
+simList = [filei.name for filei in Path.iterdir(SIM_DIR)
+           if filei.name.endswith('argmax.csv')]
+
+# Number of iterations
+N_ITERS = 10
+# Models with optimiseable parameters
+MDLS = ['RW', 'H']
 # Plot number
 plotnr = 0
 
 # Alpha/eta options
 alpha_options = np.linspace(0.01, 1, 40)
 
+# Switch points
+exStruc = pd.read_csv(SIM_DIR / simList[0], index_col='Unnamed: 0')
+lag_relCueCol = exStruc.relCueCol.eq(exStruc.relCueCol.shift())
+switches = np.where(lag_relCueCol == False)[0][1:]
 
 
-#%% ~~ Data simulation ~~ %%#
-#############################
+
+#%% ~~ Exploration ~~ %%#
+#########################
 
 
-for simi in range(N_SIMS):
-    # Create experimental structure
-    exStruc = sf.sim_experiment(simnr=simi)
+#%% ~~ Optimal thetas ~~ %%#
+#--------------------------#
+
+
+OptimalThetas = np.full((2, 1), np.nan)
+negCors = np.zeros((len(alpha_options), len(MDLS)))
+
+for iti in range(N_ITERS):
+    for loca, alphai in enumerate(alpha_options):
+        for locm, modeli in enumerate(MDLS):
+            negCors[loca, locm] += sf.sim_negSpearCor((alphai), exStruc,
+                                                      model=modeli)
+negCors /= N_ITERS
+# Optimal values
+for locm, modeli in enumerate(MDLS):
+    maxloc = [i[0] for i in np.where(
+        negCors[:, locm] == np.min(negCors[:, locm]))]
+    OptimalThetas[locm] = [alpha_options[maxloc[0]]]
     
-    # Sample data
-    ## Select random alpha and beta
-    alpha = np.random.choice(alpha_options)
+    plt.figure(plotnr)
+    fig, ax = plt.subplots()
+    im, _ = pf.heatmap(np.rot90(negCors[:, :, locm]), [1],
+                np.round(alpha_options, 3), ax=ax,
+                row_name='$\u03B2$', col_name='$\u03B1$',
+                cbarlabel='Negative Spearman Correlation')
     
-    Daphne = sf.simRW_1c(alpha, exStruc, asm='arg')
-    Hugo = sf.simHybrid_1c(alpha, Daphne, asm='arg')
-    Wilhelm = sf.simWSLS(Hugo)
-    Renee = sf.simRandom(Wilhelm)
-    
-    Renee.to_csv(SIM_DIR / f'simModels_alpha_{alpha}_armax.csv')
-    
-    pf.selplot(Renee, 'rw', plotnr, thetas=alpha, pp=simi)
+    plt.suptitle(f'Negative Spearman Correlation: Optimal values {modeli}')
+    plt.show()
     plotnr += 1
+
+
+
+#%% ~~ Plots ~~ %%#
+#-----------------#
+
+
+# Learning curve
+pf.learning_curve(simList, SIM_DIR, plotnr)
+plotnr += 1
+
+# Stay behaviour
+pf.p_stay(simList, SIM_DIR, plotnr)
+plotnr += 1
 
 
 
@@ -87,22 +120,17 @@ for simi in range(N_SIMS):
 #####################
 
 
-simList = [filei.name for filei in Path.iterdir(SIM_DIR)]
-
-
-
 #%% ~~ Grid search ~~ %%#
 #-----------------------#
 
 
-# Smallest alpha and beta values left-below
 originalThetas = np.full((len(simList), 1), np.nan)
 gridThetas = np.full((len(simList), 1), np.nan)
 
 start_total = time.time()
 for simi, filei in enumerate(simList):
     simData = pd.read_csv(SIM_DIR / filei, index_col='Unnamed: 0')
-    one_totsim_log = np.zeros((len(alpha_options), 1))
+    one_sim = np.zeros((len(alpha_options), 1))
     
     # Thetas from simulation
     stringTheta = re.findall(r"[-+]?(?:\d*\.\d+|\d+)", filei)
@@ -111,22 +139,17 @@ for simi, filei in enumerate(simList):
     
     start_sim = time.time()
     for loca, alphai in enumerate(alpha_options):
-        # one_totsim_log[loca, locb] = sf.sim_negLL((alphai, betai), simData,
-        #                                           model='RW')
-        one_totsim_log[loca] = sf.sim_negSpearCor(alphai,
-                                                  simData,
-                                                  model='RW')
-    
+        # one_sim[loca] = sf.sim_negLL((alphai), simData, model='RW')
+        one_sim[loca] = sf.sim_negSpearCor((alphai), simData, model='RW')
     # Optimal values
-    maxloc = [i[0] for i in np.where(one_totsim_log == np.min(one_totsim_log))]
+    maxloc = [i[0] for i in np.where(one_sim == np.min(one_sim))]
     gridThetas[simi] = alpha_options[maxloc[0]]
-    
     print(f'Duration sim {simi}: {round((time.time() - start_sim) / 60, 2)} minutes')
     
     if simi % 2 == 0:
         plt.figure(plotnr)
         fig, ax = plt.subplots()
-        im, _ = pf.heatmap(np.rot90(one_totsim_log),
+        im, _ = pf.heatmap(np.rot90(one_sim), [1],
                     np.round(alpha_options, 3), ax=ax,
                     row_name='$\u03B2$', col_name='$\u03B1$',
                     cbarlabel='Negative log-likelihood')
@@ -144,8 +167,6 @@ print(f'Duration total: {round((time.time() - start_total) / 60, 2)} minutes')
     # gridThetas is too big.
 ## Alphas
 print(stats.ttest_rel(originalThetas[:, 0], gridThetas[:, 0]))
-## Betas
-print(stats.ttest_rel(originalThetas[:, 1], gridThetas[:, 1]))
 
 
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Simulations -- Version 3.1
-Last edit:  2022/07/14
+"""     Simulations -- Version 3.1.1
+Last edit:  2022/07/16
 Author(s):  Geysen, Steven (SG)
 Notes:      - Simulations of the task used by Marzecova et al. (2019)
             - Release notes:
@@ -65,6 +65,7 @@ plotnr = 0
 alpha_options = np.linspace(0.01, 1, 40)
 # Beta options
 beta_options = np.linspace(0.1, 20, 40)
+##SG: To have the smallest alpha and beta values in the same corner (left-down)
 plotbetas = np.flip(beta_options)
 
 
@@ -95,7 +96,8 @@ for simi in range(N_SIMS):
     # pf.selplot(Renee, 'rw', plotnr, thetas=(alpha, beta), pp=simi)
     # plotnr += 1
 
-simList = [filei.name for filei in Path.iterdir(SIM_DIR)]
+simList = [filei.name for filei in Path.iterdir(SIM_DIR)
+           if not filei.name.endswith('argmax.csv')]
 
 
 
@@ -160,8 +162,7 @@ plotnr += 1
 #-----------------------#
 
 
-# Smallest alpha and beta values left-below
-plotbetas = np.flip(beta_options)
+
 originalThetas = np.full((len(simList), 2), np.nan)
 gridThetas = np.full((len(simList), 2), np.nan)
 
@@ -186,11 +187,9 @@ for simi, filei in enumerate(simList):
                                                                 model='RW')
             one_sim[loca, locb] /= N_ITERS
             # one_sim[loca, locb] = one_sim[loca, locb] / N_ITERS
-    
     # Optimal values
     maxloc = [i[0] for i in np.where(one_sim == np.min(one_sim))]
     gridThetas[simi, :] = [alpha_options[maxloc[0]], beta_options[maxloc[1]]]
-    
     print(f'Duration sim {simi}: {round((time.time() - start_sim) / 60, 2)} minutes')
     
     if simi % 2 == 0:
