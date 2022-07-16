@@ -41,16 +41,16 @@ from scipy import optimize, stats
 # Directories
 SPINE = Path.cwd().parent
 OUT_DIR = SPINE / 'results'
-if not Path.exists(OUT_DIR):
-    Path.mkdir(OUT_DIR)
 SIM_DIR = OUT_DIR / 'simulations'
-if not Path.exists(SIM_DIR):
-    Path.mkdir(SIM_DIR)
 
 
 
 #%% ~~ Variables ~~ %%#
 
+
+# Filenames of simulated data
+simList = [filei.name for filei in Path.iterdir(SIM_DIR)
+           if not filei.name.endswith('argmax.csv')]
 
 # Number of simulations
 N_SIMS = 10
@@ -68,36 +68,10 @@ beta_options = np.linspace(0.1, 20, 40)
 ##SG: To have the smallest alpha and beta values in the same corner (left-down)
 plotbetas = np.flip(beta_options)
 
-
-
-#%% ~~ Data simulation ~~ %%#
-#############################
-
-
-# Create experimental structure to train models on
-exStruc = sf.sim_experiment()
-## Switch points
+# Switch points
+exStruc = pd.read_csv(SIM_DIR / simList[0], index_col='Unnamed: 0')
 lag_relCueCol = exStruc.relCueCol.eq(exStruc.relCueCol.shift())
 switches = np.where(lag_relCueCol == False)[0][1:]
-
-for simi in range(N_SIMS):
-    # Sample values
-    ## Select random alpha and beta
-    alpha = np.random.choice(alpha_options)
-    beta = np.random.choice(beta_options)
-    # Models
-    Daphne = sf.simRW_1c((alpha, beta), exStruc)
-    Hugo = sf.simHybrid_1c((alpha, beta), Daphne)
-    Wilhelm = sf.simWSLS(Hugo)
-    Renee = sf.simRandom(Wilhelm)
-    
-    Renee.to_csv(SIM_DIR / f'simData_alpha_{alpha}_beta_{beta}.csv')
-    
-    # pf.selplot(Renee, 'rw', plotnr, thetas=(alpha, beta), pp=simi)
-    # plotnr += 1
-
-simList = [filei.name for filei in Path.iterdir(SIM_DIR)
-           if not filei.name.endswith('argmax.csv')]
 
 
 
