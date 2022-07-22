@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Simulations: Alpha recovery -- Version 1.1.1
-Last edit:  2022/07/16
+"""     Analysis simulations: Alpha recovery -- Version 1.1.1
+Last edit:  2022/07/18
 Author(s):  Geysen, Steven (SG)
-Notes:      - Simulations of the task used by Marzecova et al. (2019)
+Notes:      - Analysis of the task used by Marzecova et al. (2019), simulated
+                with argmax policy
             - Release notes:
                 * Worked on grid search
                 
@@ -38,7 +39,7 @@ from scipy import optimize, stats
 # Directories
 SPINE = Path.cwd().parent
 OUT_DIR = SPINE / 'results'
-SIM_DIR = OUT_DIR / 'simulations'
+SIM_DIR = OUT_DIR / 'simulations/argmax'
 
 
 
@@ -46,8 +47,7 @@ SIM_DIR = OUT_DIR / 'simulations'
 
 
 # Filenames of simulated data
-simList = [filei.name for filei in Path.iterdir(SIM_DIR)
-           if filei.name.endswith('argmax.csv')]
+simList = [filei.name for filei in Path.iterdir(SIM_DIR)]
 
 # Number of iterations
 N_ITERS = 10
@@ -140,7 +140,7 @@ for simi, filei in enumerate(simList):
     start_sim = time.time()
     for loca, alphai in enumerate(alpha_options):
         # one_sim[loca] = sf.sim_negLL((alphai), simData, model='RW')
-        one_sim[loca] = sf.sim_negSpearCor((alphai), simData, model='RW')
+        one_sim[loca] = sf.sim_negSpearCor((alphai, ), simData, model='RW')
     # Optimal values
     maxloc = [i[0] for i in np.where(one_sim == np.min(one_sim))]
     gridThetas[simi] = alpha_options[maxloc[0]]
@@ -186,6 +186,7 @@ for simi, filei in enumerate(simList):
         print(originalThetas[simi])
         print(initial_guess)
         print(nmThetas[simi])
+
 
 
 # ------------------------------------------------------------------------ End

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Plot functions -- Version 2
-Last edit:  2022/07/14
+"""     Plot functions -- Version 2.1
+Last edit:  2022/07/15
 Author(s):  Geysen, Steven (SG)
 Notes:      - Functions used to plot output
                 * Heatmap
@@ -11,8 +11,7 @@ Notes:      - Functions used to plot output
                 * Learning curve
                 * Stay behaviour
             - Release notes:
-                * Learning curve
-                * Stay behaviour
+                * Added label x-axis
             
 To do:      - Add functions of other often used plots
             - Learning curve with participant data
@@ -95,6 +94,7 @@ def selplot(data, model, plotnr, thetas=None, pp=''):
     # True cue
     plt.plot(data[['relCueCol']], label = 'True cue', linestyle = '-.')
     
+    plt.xlabel('trials')
     plt.legend()
 
     plt.show()
@@ -226,6 +226,7 @@ def learning_curve(dataList, datadir, plotnr, wsls=False):
     switches = np.where(lag_relCueCol == False)[0][1:]
     
     plt.figure(plotnr)
+    plt.xlabel('Trials')
     plt.ylabel('Probability of choosing correct')
     plt.ylim(-0.1, 1.1)
     
@@ -324,7 +325,7 @@ def p_stay(dataList, datadir, plotnr):
     ## Settings y-axis
     plt.ylabel('p(stay)')
     
-    plt.title('Models')
+    plt.title('Stay behaviour')
     plt.legend(loc='lower right')
 
     plt.show()

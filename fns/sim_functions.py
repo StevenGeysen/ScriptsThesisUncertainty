@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Simulation functions -- Version 2.3
-Last edit:  2022/07/12
+"""     Simulation functions -- Version 2.3.2
+Last edit:  2022/07/17
 Author(s):  Geysen, Steven (SG)
 Notes:      - Functions used for the simulation of the task used by
                 Marzecova et al. (2019). Both structure and models.
@@ -13,7 +13,7 @@ Notes:      - Functions used for the simulation of the task used by
                 * (negaitve) log likelihood
                 * Negative Spearman correlation
             - Release notes:
-                * Fixed mistake in RT sampling
+                * Fixed indexing parameters
             
 To do:      - 
             
@@ -170,18 +170,21 @@ def sim_rt(rpe):
     Returns
     -------
     RT : float
-        Simulated response time.
+        Simulated response time (in secondes).
     """
 
-    try:
-        ##SG: K = tau / sigma, loc = mu, scale = sigma.
-        RT = stats.exponnorm.rvs(K = abs(rpe) / 0.02635,
-                                 loc = 0.3009, scale = 0.02635)
-    except:
-        RT = np.nan
-        print('Failed rt sampling')
-    if RT == float('inf'):
-        RT = 1.7
+    if rpe == 0:
+        RT = 0.3
+    else:
+        try:
+            ##SG: K = tau / sigma, loc = mu, scale = sigma.
+            RT = stats.exponnorm.rvs(K = abs(rpe) / 0.02635,
+                                     loc = 0.3009, scale = 0.02635)
+        except:
+            RT = np.nan
+            print('Failed rt sampling')
+        if RT == float('inf'):
+            RT = 1.7
 
     return RT
 
@@ -272,7 +275,7 @@ def simRW_1c(parameters, data, asm='soft'):
             probcue = 0.5
         else:
             selcue, probcue = af.policy(asm, Q_est[triali - 1, :],
-                                        parameters[1])
+                                        parameters[-1])
         simDict['selCue_RW'].append(selcue)
         simDict['prob_RW'].append(probcue)
         
@@ -377,7 +380,7 @@ def simHybrid_1c(parameters, data, salpha=0.01, asm='soft'):
             probcue = 0.5
         else:
             selcue, probcue = af.policy(asm, Q_est[triali - 1, :],
-                                        parameters[1])
+                                        parameters[-1])
         simDict['selCue_H'].append(selcue)
         simDict['prob_H'].append(probcue)
         

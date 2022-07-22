@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Simulations -- Version 3.1.1
-Last edit:  2022/07/16
+"""     Analysis simulations: Softmax -- Version 3.1.1
+Last edit:  2022/07/18
 Author(s):  Geysen, Steven (SG)
-Notes:      - Simulations of the task used by Marzecova et al. (2019)
+Notes:      - Analysis of simulated data of the task used by
+                Marzecova et al. (2019)
             - Release notes:
                 * Optimal thetas
                 * Learning curve
@@ -41,7 +42,7 @@ from scipy import optimize, stats
 # Directories
 SPINE = Path.cwd().parent
 OUT_DIR = SPINE / 'results'
-SIM_DIR = OUT_DIR / 'simulations'
+SIM_DIR = OUT_DIR / 'simulations/softmax'
 
 
 
@@ -49,8 +50,7 @@ SIM_DIR = OUT_DIR / 'simulations'
 
 
 # Filenames of simulated data
-simList = [filei.name for filei in Path.iterdir(SIM_DIR)
-           if not filei.name.endswith('argmax.csv')]
+simList = [filei.name for filei in Path.iterdir(SIM_DIR)]
 
 # Number of simulations
 N_SIMS = 10
