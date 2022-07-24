@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Analysis simulations: Softmax -- Version 3.1.1
-Last edit:  2022/07/18
+"""     Analysis simulations: Softmax -- Version 3.2
+Last edit:  2022/07/24
 Author(s):  Geysen, Steven (SG)
 Notes:      - Analysis of simulated data of the task used by
                 Marzecova et al. (2019)
             - Release notes:
-                * Optimal thetas
-                * Learning curve
-                * Stay behaviour
+                * PE boxplot
                 
 To do:      - Nelder-Mead
             - Explore models
@@ -125,6 +123,45 @@ plotnr += 1
 # Stay behaviour
 pf.p_stay(simList, SIM_DIR, plotnr)
 plotnr += 1
+
+#%%
+
+valid_pe = []
+invalid_pe = []
+
+for filei in simList:
+    valid_pe.append(list(exStruc['RPE_RW'].loc[exStruc['validity'] == True]))
+    invalid_pe.append(list(exStruc['RPE_RW'].loc[exStruc['validity'] == False]))
+
+
+valid_long = [i for listi in valid_pe for i in listi]
+invalid_long = [i for listi in invalid_pe for i in listi]
+
+pe_data = [valid_long, invalid_long]
+labels = ['Valid trials', 'Invalid trials']
+
+
+fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(9, 4))
+
+# plot violin plot
+axs[0].violinplot(pe_data,
+                  showmeans=False,
+                  showmedians=True)
+axs[0].set_title('Violin plot')
+
+# plot box plot
+axs[1].boxplot(pe_data)
+axs[1].set_title('Box plot')
+
+# adding horizontal grid lines
+for ax in axs:
+    ax.yaxis.grid(True)
+    ax.set_xticks([y + 1 for y in range(len(pe_data))],
+                  labels=labels)
+    ax.set_xlabel('Trial type')
+    ax.set_ylabel('Estimated prediction errors')
+
+plt.show()
 
 
 
