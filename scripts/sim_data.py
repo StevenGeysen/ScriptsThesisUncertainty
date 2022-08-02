@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Simulate data -- Version 1.1
-Last edit:  2022/07/17
+"""     Simulate data -- Version 1.2
+Last edit:  2022/08/02
 Author(s):  Geysen, Steven (SG)
 Notes:      - Simulations of the task used by Marzecova et al. (2019)
             - Release notes:
-                * Fixed indexing parameters
+                * More simulations with same parameter values
                 
 To do:      - 
 Questions:  
@@ -50,7 +50,7 @@ if not Path.exists(ARG_DIR):
 
 
 # Number of simulations
-N_SIMS = 50
+N_SIMS = 5
 # Plot number
 plotnr = 0
 
@@ -69,30 +69,31 @@ exStruc = sf.sim_experiment()
 
 
 for simi in range(N_SIMS):
-    # Parameter values
-    ## Select random alpha/eta and beta
-    alpha = np.random.choice(alpha_options)
-    beta = np.random.choice(beta_options)
-    
-    # Models with argmax policy
-    Daphne_arg = sf.simRW_1c((alpha, ), exStruc, asm='arg')
-    Hugo_arg = sf.simHybrid_1c((alpha, ), Daphne_arg, asm='arg')
-    Wilhelm_arg = sf.simWSLS(Hugo_arg)
-    Renee_arg = sf.simRandom(Wilhelm_arg)
-    Renee_arg.to_csv(ARG_DIR / f'simData_alpha_{alpha}_argmax.csv')
-    
-    # pf.selplot(Renee_arg, 'rw', plotnr, thetas=alpha, pp=simi)
-    # plotnr += 1
-    
-    # Models with SoftMax policy
-    Daphne_soft = sf.simRW_1c((alpha, beta), exStruc)
-    Hugo_soft = sf.simHybrid_1c((alpha, beta), Daphne_soft)
-    Wilhelm_soft = sf.simWSLS(Hugo_soft)
-    Renee_soft = sf.simRandom(Wilhelm_soft)
-    Renee_soft.to_csv(SOFT_DIR / f'simData_alpha_{alpha}_beta_{beta}.csv')
-    
-    # pf.selplot(Renee_soft, 'rw', plotnr, thetas=(alpha, beta), pp=simi)
-    # plotnr += 1
+    for alphai in alpha_options:
+        # Parameter values
+        ## Select random alpha/eta and beta
+        beta = np.random.choice(beta_options)
+        title = f'simData_sim{simi}_alpha_{alphai}'
+        
+        # Models with argmax policy
+        Daphne_arg = sf.simRW_1c((alphai, ), exStruc, asm='arg')
+        Hugo_arg = sf.simHybrid_1c((alphai, ), Daphne_arg, asm='arg')
+        Wilhelm_arg = sf.simWSLS(Hugo_arg)
+        Renee_arg = sf.simRandom(Wilhelm_arg)
+        Renee_arg.to_csv(ARG_DIR / title + '_argmax.csv')
+        
+        # pf.selplot(Renee_arg, 'rw', plotnr, thetas=alphai, pp=simi)
+        # plotnr += 1
+        
+        # Models with SoftMax policy
+        Daphne_soft = sf.simRW_1c((alphai, beta), exStruc)
+        Hugo_soft = sf.simHybrid_1c((alphai, beta), Daphne_soft)
+        Wilhelm_soft = sf.simWSLS(Hugo_soft)
+        Renee_soft = sf.simRandom(Wilhelm_soft)
+        Renee_soft.to_csv(SOFT_DIR / title + f'_beta_{beta}_softmax.csv')
+        
+        # pf.selplot(Renee_soft, 'rw', plotnr, thetas=(alphai, beta), pp=simi)
+        # plotnr += 1
 
 
 
