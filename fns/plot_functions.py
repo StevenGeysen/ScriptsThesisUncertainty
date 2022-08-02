@@ -1,24 +1,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Plot functions -- Version 2.1
-Last edit:  2022/07/15
+"""     Plot functions -- Version 2.2
+Last edit:  2022/08/02
 Author(s):  Geysen, Steven (SG)
 Notes:      - Functions used to plot output
                 * Heatmap
                 * Sanity checks
                     - Selection plot
                     - RT distributions
+                    - PE validity effect
                 * Learning curve
                 * Stay behaviour
             - Release notes:
-                * Added label x-axis
+                * Violin and box plot of PE validity effect
             
 To do:      - Add functions of other often used plots
             - Learning curve with participant data
             
 Comments:   
             
-Sources:     https://matplotlib.org/stable/gallery/images_contours_and_fields/image_annotated_heatmap.html
+Sources:    https://matplotlib.org/stable/gallery/images_contours_and_fields/image_annotated_heatmap.html
             https://stackoverflow.com/a/55768955
 """
 
@@ -153,6 +154,70 @@ def rt_dist(data, model, thetas, plotnr, pp=''):
     
     ax1.hist(rt_invalid, bins = 30)
     ax1.set_title('Invalid RT (s)')
+
+    plt.show()
+
+
+def pe_validity(model, dataList, datadir, plotnr, wsls=False):
+    """
+    Box plot and violin plot
+    Visual inspection of validity effecti in perdiction errors.
+    https://matplotlib.org/stable/gallery/statistics/boxplot_vs_violin.html
+
+    Parameters
+    ----------
+    model : string
+        Name of the used model:
+            RW - Rescorla-Wagner
+            H - RW-PH hybrid
+    dataList : list
+        List containing the filenames of the data.
+    datadir : Path
+        Location of the data
+    plotnr : int
+        Plot number.
+
+    Returns
+    -------
+    Plot.
+    """
+
+    # Preparation
+    # -----------
+    # Sort valid and invalid trials
+    valid_pe = []
+    invalid_pe = []
+    for filei in dataList:
+        valid_pe.append(list(filei['RPE_{model}'].loc[filei['validity'] == True]))
+        invalid_pe.append(list(filei['RPE_{model}'].loc[filei['validity'] == False]))
+    ## Reshape
+    valid_long = [i for listi in valid_pe for i in listi]
+    invalid_long = [i for listi in invalid_pe for i in listi]
+    
+    # Plot data
+    pe_data = [valid_long, invalid_long]
+    labels = ['Valid trials', 'Invalid trials']
+
+    # Plot
+    # ----
+    plt.figure(plotnr)
+    fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(9, 4))
+    # Violin plot
+    axs[0].violinplot(pe_data,
+                      showmeans=False,
+                      showmedians=True)
+    axs[0].set_title('Violin plot')
+    
+    # Box plot
+    axs[1].boxplot(pe_data)
+    axs[1].set_title('Box plot')
+    
+    for ax in axs:
+        ax.yaxis.grid(True)
+        ax.set_xticks([y + 1 for y in range(len(pe_data))],
+                      labels=labels)
+        ax.set_xlabel('Trial type')
+        ax.set_ylabel('Estimated prediction errors')
 
     plt.show()
 

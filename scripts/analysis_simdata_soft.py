@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Analysis simulations: Softmax -- Version 3.2
-Last edit:  2022/07/24
+"""     Analysis simulations: Softmax -- Version 3.3
+Last edit:  2022/08/02
 Author(s):  Geysen, Steven (SG)
 Notes:      - Analysis of simulated data of the task used by
                 Marzecova et al. (2019)
@@ -124,44 +124,10 @@ plotnr += 1
 pf.p_stay(simList, SIM_DIR, plotnr)
 plotnr += 1
 
-#%%
-
-valid_pe = []
-invalid_pe = []
-
-for filei in simList:
-    valid_pe.append(list(exStruc['RPE_RW'].loc[exStruc['validity'] == True]))
-    invalid_pe.append(list(exStruc['RPE_RW'].loc[exStruc['validity'] == False]))
-
-
-valid_long = [i for listi in valid_pe for i in listi]
-invalid_long = [i for listi in invalid_pe for i in listi]
-
-pe_data = [valid_long, invalid_long]
-labels = ['Valid trials', 'Invalid trials']
-
-
-fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(9, 4))
-
-# plot violin plot
-axs[0].violinplot(pe_data,
-                  showmeans=False,
-                  showmedians=True)
-axs[0].set_title('Violin plot')
-
-# plot box plot
-axs[1].boxplot(pe_data)
-axs[1].set_title('Box plot')
-
-# adding horizontal grid lines
-for ax in axs:
-    ax.yaxis.grid(True)
-    ax.set_xticks([y + 1 for y in range(len(pe_data))],
-                  labels=labels)
-    ax.set_xlabel('Trial type')
-    ax.set_ylabel('Estimated prediction errors')
-
-plt.show()
+# PE validity effect
+for modeli in MDLS:
+    pf.pe_validity(modeli, simList, SIM_DIR, plotnr)
+    plotnr += 1
 
 
 
@@ -171,7 +137,6 @@ plt.show()
 
 #%% ~~ Grid search ~~ %%#
 #-----------------------#
-
 
 
 originalThetas = np.full((len(simList), 2), np.nan)
@@ -185,7 +150,7 @@ for simi, filei in enumerate(simList):
     # Thetas from simulation
     stringTheta = re.findall(r"[-+]?(?:\d*\.\d+|\d+)", filei)
     otheta = [float(thetai) for thetai in stringTheta]
-    originalThetas[simi, :] = otheta
+    originalThetas[simi, :] = otheta[1:]
     
     start_sim = time.time()
     for loca, alphai in enumerate(alpha_options):
