@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """     Analysis simulations: Softmax -- Version 3.3
-Last edit:  2022/08/02
+Last edit:  2022/08/03
 Author(s):  Geysen, Steven (SG)
 Notes:      - Analysis of simulated data of the task used by
                 Marzecova et al. (2019)
@@ -50,8 +50,6 @@ SIM_DIR = OUT_DIR / 'simulations/softmax'
 # Filenames of simulated data
 simList = [filei.name for filei in Path.iterdir(SIM_DIR)]
 
-# Number of simulations
-N_SIMS = 10
 # Number of iterations
 N_ITERS = 10
 # Models with optimiseable parameters
@@ -68,8 +66,6 @@ plotbetas = np.flip(beta_options)
 
 # Switch points
 exStruc = pd.read_csv(SIM_DIR / simList[0], index_col='Unnamed: 0')
-lag_relCueCol = exStruc.relCueCol.eq(exStruc.relCueCol.shift())
-switches = np.where(lag_relCueCol == False)[0][1:]
 
 
 
@@ -94,10 +90,10 @@ for iti in range(N_ITERS):
 negCors /= N_ITERS
 # Optimal values
 for locm, modeli in enumerate(MDLS):
-    maxloc = [i[0] for i in np.where(
+    toploc = [i[0] for i in np.where(
         negCors[:, :, locm] == np.min(negCors[:, :, locm]))]
-    OptimalThetas[locm, :] = [alpha_options[maxloc[0]],
-                              beta_options[maxloc[1]]]
+    OptimalThetas[locm, :] = [alpha_options[toploc[0]],
+                              beta_options[toploc[1]]]
     
     plt.figure(plotnr)
     fig, ax = plt.subplots()
@@ -125,9 +121,8 @@ pf.p_stay(simList, SIM_DIR, plotnr)
 plotnr += 1
 
 # PE validity effect
-for modeli in MDLS:
-    pf.pe_validity(modeli, simList, SIM_DIR, plotnr)
-    plotnr += 1
+pf.pe_validity(MDLS, simList, SIM_DIR, plotnr)
+plotnr += 1
 
 
 
@@ -164,8 +159,8 @@ for simi, filei in enumerate(simList):
             one_sim[loca, locb] /= N_ITERS
             # one_sim[loca, locb] = one_sim[loca, locb] / N_ITERS
     # Optimal values
-    maxloc = [i[0] for i in np.where(one_sim == np.min(one_sim))]
-    gridThetas[simi, :] = [alpha_options[maxloc[0]], beta_options[maxloc[1]]]
+    toploc = [i[0] for i in np.where(one_sim == np.min(one_sim))]
+    gridThetas[simi, :] = [alpha_options[toploc[0]], beta_options[toploc[1]]]
     print(f'Duration sim {simi}: {round((time.time() - start_sim) / 60, 2)} minutes')
     
     if simi % 2 == 0:
