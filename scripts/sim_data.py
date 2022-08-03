@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """     Simulate data -- Version 1.2
-Last edit:  2022/08/02
+Last edit:  2022/08/03
 Author(s):  Geysen, Steven (SG)
 Notes:      - Simulations of the task used by Marzecova et al. (2019)
             - Release notes:
@@ -80,7 +80,7 @@ for simi in range(N_SIMS):
         Hugo_arg = sf.simHybrid_1c((alphai, ), Daphne_arg, asm='arg')
         Wilhelm_arg = sf.simWSLS(Hugo_arg)
         Renee_arg = sf.simRandom(Wilhelm_arg)
-        Renee_arg.to_csv(ARG_DIR / title + '_argmax.csv')
+        Renee_arg.to_csv(ARG_DIR / (title + '_argmax.csv'))
         
         # pf.selplot(Renee_arg, 'rw', plotnr, thetas=alphai, pp=simi)
         # plotnr += 1
@@ -90,7 +90,7 @@ for simi in range(N_SIMS):
         Hugo_soft = sf.simHybrid_1c((alphai, beta), Daphne_soft)
         Wilhelm_soft = sf.simWSLS(Hugo_soft)
         Renee_soft = sf.simRandom(Wilhelm_soft)
-        Renee_soft.to_csv(SOFT_DIR / title + f'_beta_{beta}_softmax.csv')
+        Renee_soft.to_csv(SOFT_DIR / (title + f'_beta_{beta}_softmax.csv'))
         
         # pf.selplot(Renee_soft, 'rw', plotnr, thetas=(alphai, beta), pp=simi)
         # plotnr += 1
