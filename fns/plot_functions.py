@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Plot functions -- Version 2.3
+"""     Plot functions -- Version 3
 Last edit:  2022/08/03
 Author(s):  Geysen, Steven (SG)
 Notes:      - Functions used to plot output
-                * Heatmap
                 * Sanity checks
                     - Selection plot
                     - RT distributions
                     - PE validity effect
                 * Learning curve
                 * Stay behaviour
+                * Heatmaps
             - Release notes:
                 * Add flexibility to PE validity plot
+                * 1 dimensional heatmap
             
 To do:      - Add functions of other often used plots
             - Learning curve with participant data
@@ -22,6 +23,8 @@ Comments:
             
 Sources:    https://matplotlib.org/stable/gallery/images_contours_and_fields/image_annotated_heatmap.html
             https://stackoverflow.com/a/55768955
+            https://stackoverflow.com/a/45842334
+            https://stackoverflow.com/a/8409110
 """
 
 
@@ -129,8 +132,8 @@ def rt_dist(data, model, thetas, plotnr, pp=''):
     Plot.
     """
 
-    model = model.upper()
     models = af.labelDict()
+    model = model.upper()
     # Wilhelm and Renee do not simulate RTs.
     assert not model in ['W', 'R'], 'Model has no simulated RT'
 
@@ -190,7 +193,7 @@ def pe_validity(model, dataList, datadir, plotnr, wsls=False):
         model = [modeli.upper() for modeli in model]
     else:
         model = [model]
-    
+
     # Plot specs
     plt.figure(plotnr)
     fig, axs = plt.subplots(nrows=len(model), ncols=2, figsize=(9, 4 * len(model)))
@@ -219,28 +222,20 @@ def pe_validity(model, dataList, datadir, plotnr, wsls=False):
 
         # Plot
         # ----
-        vtitle = f'Violin plot {models[modeli]}'
-        btitle = f'Box plot {models[modeli]}'
-        if len(model) > 1:
-            # Violin plot
-            axs[rowi, 0].violinplot(pe_data,
-                                    showmeans=False,
-                                    showmedians=True)
-            axs[rowi, 0].set_title(vtitle)
-            # Box plot
-            axs[rowi, 1].boxplot(pe_data)
-            axs[rowi, 1].set_title(btitle)
-            rawplots = axs[rowi]
-        else:
-            # Violin plot
-            axs[0].violinplot(pe_data,
-                              showmeans=False,
-                              showmedians=True)
-            axs[0].set_title(vtitle)
-            # Box plot
-            axs[1].boxplot(pe_data)
-            axs[1].set_title(btitle)
-            rawplots = axs
+        ##SG: With the help of professor Dawyndt, Peter.
+            # If there is more than 1 dimension, take the correct row.
+            # Otherwise take everything.
+        rawplots = axs[rowi, :] if axs.ndim > 1 else axs
+        vplot, bplot = rawplots[0], rawplots[1]
+        
+        # Violin plot
+        vplot.violinplot(pe_data,
+                         showmeans=False,
+                         showmedians=True)
+        vplot.set_title(f'Violin plot {models[modeli]}')
+        # Box plot
+        bplot.boxplot(pe_data)
+        bplot.set_title(f'Box plot {models[modeli]}')
         
         for ax in rawplots:
             ax.yaxis.grid(True)
@@ -549,6 +544,72 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
             texts.append(text)
 
     return texts
+
+
+def heatmap_1d(model, plotdata, minima, tickvalues, plotnr, truevalue=None):
+    """
+    1D heatmap
+    Plot a heatmap and line graph for a 1 dimensional array.
+    https://stackoverflow.com/a/45842334
+    https://stackoverflow.com/a/8409110
+
+    Parameters
+    ----------
+    model : iterable
+        Name of the used model:
+            RW - Rescorla-Wagner
+            H - RW-PH hybrid
+    plotdata : np.darray
+        Data to be plotted.
+    minima : np.darray
+        Location of lowest values.
+    tickvalues : np.darray
+        Values of x-ax. For clarity, only a fourth will be presented.
+    plotnr : int
+        Plot number.
+
+    Returns
+    -------
+    Plot.
+    """
+
+    # Preparation
+    # -----------
+    # Set title
+    model = model.upper()
+    models = af.labelDict()
+    title = f'Negative Spearman Correlation {models[model]}'
+    if model[:2] == 'RW':
+        mdl_par = '$\u03B1$'
+    else:
+        mdl_par = '$\u03B7$'
+    if not truevalue is None:
+        title += f' ({mdl_par} = {truevalue})'
+    # Size bounding box
+    extent = [tickvalues[0] - (tickvalues[1] - tickvalues[0]) / 2,
+              tickvalues[-1] + (tickvalues[1] - tickvalues[0]) / 2,
+              0, 1]
+
+    # Plot
+    # ----
+    plt.figure(plotnr)
+    fig, (hplot, lplot) = plt.subplots(nrows=2, sharex=True, figsize=(5, 2))
+    # Heatmap
+    hplot.imshow(plotdata[np.newaxis, :], cmap='plasma', aspect='auto',
+                 extent=extent)
+    hplot.set_xlim(tickvalues[0], tickvalues[-1])
+    ## No need for values on this y-ax.
+    hplot.set_yticks([])
+    # Line graph
+    lplot.plot(tickvalues, plotdata, marker='D', markevery=minima)
+    lplot.set_xlabel(f'{mdl_par} values')
+    lplot.set_xticks(np.round(tickvalues[::4], 3))
+    lplot.set_ylabel('Correlation')
+    
+    plt.tight_layout()
+    plt.suptitle(title)
+
+    plt.show()
 
 
 
