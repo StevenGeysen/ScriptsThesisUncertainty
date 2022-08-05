@@ -5,8 +5,7 @@ Last edit:  2022/08/05
 Author(s):  Geysen, Steven (SG)
 Notes:      - Fit models to behavioural data of Marzecova et al. (2019)
             - Release notes:
-                * RT test
-                * Start Nelder-Mead optimisation
+                * Argmax gridsearch
                 
 To do:      - Fit models
             - Statistics
