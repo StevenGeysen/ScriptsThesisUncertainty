@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """     Behavioural model fit -- Version 1.2
-Last edit:  2022/07/12
+Last edit:  2022/08/05
 Author(s):  Geysen, Steven (SG)
 Notes:      - Fit models to behavioural data of Marzecova et al. (2019)
             - Release notes:
@@ -40,7 +40,7 @@ Comments:   AM: The data file was merged in R, from the single files generated
                     * 'Switch' - count of trials between assumed switches of
                         the cue
                     * 'Lamda' - lamda parameter from Yu & Dayan's (2005)
-                    approximate algorithm - unexpected uncertainty
+                        approximate algorithm - unexpected uncertainty
                     * 'Gamma' - gamma parameter from Yu & Dayan's (2005)
                         approximate algorithm - expected uncertainty
                     * 'pMui' - probability that the current context is correct
@@ -91,6 +91,10 @@ un_data = pd.read_csv(DATA_DIR / 'UnDataProjectSteven.csv')
 scaList = ['relCue', 'irrelCue', 'validity', 'targetLoc', 'relCueCol']
 un_data.loc[:, (scaList)] = abs(un_data.loc[:, (scaList)] - 1)
 
+# Number of iterations
+N_ITERS = 10
+# Models with optimiseable parameters
+MDLS = ['RW', 'H']
 # Number of participants
 npp = un_data['id'].max()
 # Plot number
@@ -99,12 +103,19 @@ plotnr = 0
 # Alpha/eta options
 alpha_options = np.linspace(0.01, 1, 40)
 # Beta options
-beta_options = np.linspace(0.1, 20, 40)
+##SG: The SoftMax policy needs a high beta value for the model to be accurate
+    # (see simulations). Therefore it is not usefull to look at beta values
+    # smaller than 10.
+beta_options = np.linspace(10, 20, 40)
 
+
+
+#%% ~~ Exploration ~~ %%#
+#########################
 
 
 #%% ~~ RT split ~~ %%#
-######################
+#--------------------#
 """
 Trying to answer "How do I know the participant's selection?"
 
@@ -112,8 +123,6 @@ The reasoning is that RT under the median are fast RTs, and fast RTs should be
 more prevalent on congruent trials. Slow RTs are then a stand in for
 incongruent. This plot is to see how well this assumption can be seen in the
 behavioural data.
-
-Does not work!
 """
 
 
@@ -134,14 +143,21 @@ for ppi in range(npp):
     pf.selplot(pp_data, 'pp', plotnr, pp=ppi)
     plotnr += 1
 
+# =============================================================================
+# Does not work!
+# =============================================================================
+
 
 
 #%% ~~ Fitting ~~ %%#
 #####################
 
 
+#%% ~~ SoftMax ~~ %%#
+#-------------------#
+
+
 #%% ~~ Grid search ~~ %%#
-#-----------------------#
 
 
 # Smallest alpha and beta values left-below
@@ -190,7 +206,6 @@ print(f'Duration total: {round((time.time() - start_total) / 60, 2)} minutes')
 
 
 #%% ~~ Nelder - Mead ~~ %%#
-#-------------------------#
 
 
 nmThetas = np.full((npp, 2), np.nan)
@@ -211,6 +226,50 @@ for ppi in range(npp):
     if ppi % 2 == 0:
         print(initial_guess)
         print(nmThetas[ppi])
+
+
+
+#%% ~~ Argmax ~~ %%#
+#------------------#
+
+
+gridThetas = np.full((npp, len(MDLS)), np.nan)
+
+start_total = time.time()
+for ppi in range(npp):
+    ## Skip pp6 (not in data)
+    if ppi + 1 == 6:
+        continue
+    ## Use only data from pp
+    pp_data = un_data[un_data['id'] == ppi + 1]
+    one_pp = np.zeros((len(alpha_options), len(MDLS)))
+    
+    start_sim = time.time()
+    for locm, modeli in enumerate(MDLS):
+        for loca, alphai in enumerate(alpha_options):
+            for iti in range(N_ITERS):
+                one_pp[loca, locm] += bf.sim_negSpearCor((alphai, ), pp_data,
+                                                         model=modeli)
+        modeldata = one_pp[:, locm] / N_ITERS
+        # Optimal values
+        toploc = [i[0] for i in np.where(modeldata == np.min(modeldata))]
+        gridThetas[ppi, locm] = alpha_options[toploc[0]]
+    print(f'Duration pp {ppi}: {round((time.time() - start_sim) / 60, 2)} minutes')
+    
+    if ppi % 2 == 0:
+        pf.heatmap_1d(modeli, modeldata, toploc, alpha_options, plotnr,
+                      gridThetas[ppi])
+        plotnr += 1
+        print(gridThetas[ppi])
+print(f'Duration total: {round((time.time() - start_total) / 60, 2)} minutes')
+
+
+##SG: Paired t-test to see if the difference between the initial guess and
+    # grid estimate is too big.
+## Alphas
+print(stats.ttest_rel(alpha_options, gridThetas[:, 0]))
+## Etas
+print(stats.ttest_rel(alpha_options, gridThetas[:, 1]))
 
 
 

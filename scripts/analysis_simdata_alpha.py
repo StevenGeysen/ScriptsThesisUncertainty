@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Analysis simulations: Alpha recovery -- Version 2
-Last edit:  2022/08/03
+"""     Analysis simulations: Alpha recovery -- Version 2.1
+Last edit:  2022/08/05
 Author(s):  Geysen, Steven (SG)
 Notes:      - Analysis of the task used by Marzecova et al. (2019), simulated
                 with argmax policy
@@ -149,7 +149,7 @@ for simi, filei in enumerate(simList):
     
     if simi % 2 == 0:
         pf.heatmap_1d(modeli, modeldata, toploc, alpha_options, plotnr,
-                      originalThetas[simi])
+                      gridThetas[simi])
         plotnr += 1
         
         print(originalThetas[simi])
@@ -161,7 +161,8 @@ print(f'Duration total: {round((time.time() - start_total) / 60, 2)} minutes')
     # gridThetas is too big.
 ## Alphas
 print(stats.ttest_rel(originalThetas[:, 0], gridThetas[:, 0]))
-
+## Etas
+print(stats.ttest_rel(originalThetas[:, 0], gridThetas[:, 1]))
 
 
 
