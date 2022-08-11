@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Plot functions -- Version 3
-Last edit:  2022/08/03
+"""     Plot functions -- Version 3.1
+Last edit:  2022/08/11
 Author(s):  Geysen, Steven (SG)
 Notes:      - Functions used to plot output
                 * Sanity checks
@@ -9,11 +9,11 @@ Notes:      - Functions used to plot output
                     - RT distributions
                     - PE validity effect
                 * Learning curve
+                * PE curve
                 * Stay behaviour
                 * Heatmaps
             - Release notes:
-                * Add flexibility to PE validity plot
-                * 1 dimensional heatmap
+                * PE curve
             
 To do:      - Add functions of other often used plots
             - Learning curve with participant data
@@ -40,7 +40,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import fns.assisting_functions as af
 
-from scipy import stats
+from scipy import signal, stats
 
 
 
@@ -89,16 +89,16 @@ def selplot(data, model, plotnr, thetas=None, pp=''):
         title = f'Cue selection {pp} {models[model]}: \
             {model_par} = {round(thetas[0], 4)}; $\u03B2$ = {round(thetas[1], 4)}'
     # Cue estimates
-        plt.plot(data[[f'Qest_0_{model}']], label = 'Cue 0')
-        plt.plot(data[[f'Qest_1_{model}']], label = 'Cue 1')
+        plt.plot(data[[f'Qest_0_{model}']], label='Cue 0')
+        plt.plot(data[[f'Qest_1_{model}']], label='Cue 1')
     else:
         title = f'Cue selection {pp} {models[model]}'
     plt.title(title)
     
     # Selected cue
-    plt.plot(data[[f'selCue_{model}']], label = 'Selected cue')
+    plt.plot(data[[f'selCue_{model}']], label='Selected cue')
     # True cue
-    plt.plot(data[['relCueCol']], label = 'True cue', linestyle = '-.')
+    plt.plot(data[['relCueCol']], label='True cue', linestyle='-.')
     
     plt.xlabel('trials')
     plt.legend()
@@ -151,14 +151,14 @@ def rt_dist(data, model, thetas, plotnr, pp=''):
         {model_par} = {round(thetas[0], 4)}; $\u03B2$ = {round(thetas[1], 4)}'
     
     plt.figure(plotnr)
-    fig, ((ax0, ax1)) = plt.subplots(nrows = 1, ncols = 2)
+    fig, ((ax0, ax1)) = plt.subplots(nrows=1, ncols=2)
     
-    ax0.hist(rt_valid, bins = 30)
+    ax0.hist(rt_valid, bins=30)
     ax0.set_title('Valid RT (s)')
     
     fig.suptitle(title, fontsize=14)
     
-    ax1.hist(rt_invalid, bins = 30)
+    ax1.hist(rt_invalid, bins=30)
     ax1.set_title('Invalid RT (s)')
 
     plt.show()
@@ -177,7 +177,7 @@ def pe_validity(model, dataList, datadir, plotnr, wsls=False):
             RW - Rescorla-Wagner
             H - RW-PH hybrid
     dataList : list
-        List containing the filenames of the data.
+        List containing the data filenames.
     datadir : Path
         Location of the data.
     plotnr : int
@@ -196,7 +196,8 @@ def pe_validity(model, dataList, datadir, plotnr, wsls=False):
 
     # Plot specs
     plt.figure(plotnr)
-    fig, axs = plt.subplots(nrows=len(model), ncols=2, figsize=(9, 4 * len(model)))
+    fig, axs = plt.subplots(nrows=len(model), ncols=2,
+                            figsize=(9, 4 * len(model)))
     fig.suptitle('Validity effect')
     labels = ['Valid trials', 'Invalid trials']
 
@@ -261,7 +262,7 @@ def learning_curve(dataList, datadir, plotnr, wsls=False):
     Parameters
     ----------
     dataList : list
-        List containing the filenames of the data.
+        List containing the data filenames.
     datadir : Path
         Location of the data.
     plotnr : int
@@ -321,12 +322,12 @@ def learning_curve(dataList, datadir, plotnr, wsls=False):
     plt.ylim(-0.1, 1.1)
     
     # Plot all participants and not the mean
-    plt.plot(meanLC[0, :], label = 'RW')
-    plt.plot(meanLC[1, :], label = 'Hybrid')
-    plt.plot(meanLC[3, :], label = 'Random')
+    plt.plot(meanLC[0, :], label='RW')
+    plt.plot(meanLC[1, :], label='Hybrid')
+    plt.plot(meanLC[3, :], label='Random')
     if wsls:
         ##SG: Makes the plot unclear.
-        plt.plot(meanLC[2, :], label = 'WSLS')
+        plt.plot(meanLC[2, :], label='WSLS')
     plt.vlines(switches, -0.05, 1.05, colors='black')
     
     plt.legend()
@@ -347,7 +348,7 @@ def p_stay(dataList, datadir, plotnr):
     Parameters
     ----------
     dataList : list
-        List containing the filenames of the data.
+        List containing the data filenames.
     datadir : Path
         Location of the data.
     plotnr : int
@@ -417,6 +418,96 @@ def p_stay(dataList, datadir, plotnr):
     
     plt.title('Stay behaviour')
     plt.legend(loc='lower right')
+
+    plt.show()
+
+
+# ~~ Prediction error curve ~~ #
+def pe_curve(model, dataList, datadir, plotnr, signed=True, peaks=False):
+    """
+    Plot prediction errors
+    The prediction errors are plotted in a similar method as the proportion of
+    choosing the predictive cue, trial by trial, depicted by the learning
+    curves.
+
+    Parameters
+    ----------
+    model : iterable
+        Name of the used model:
+            RW - Rescorla-Wagner
+            H - RW-PH hybrid
+    dataList : list
+        List containing the data filenames.
+    datadir : Path
+        Location of the data.
+    plotnr : int
+        Plot number.
+    signed : bool, optional
+        Plot signed or unsigned reward prediction errors.
+        The default is True.
+    peaks : bool, optional
+        Highlight the peaks of prediction errors. The default is False.
+
+    Returns
+    -------
+    Plot.
+    """
+
+    # Preparation
+    # -----------
+    models = af.labelDict()
+    if not isinstance(model, str):
+        model = [modeli.upper() for modeli in model]
+    else:
+        model = [model]
+    
+    ##SG: n models, 640 trials, n datasets
+    LCmatrix = np.full((len(model), 640, len(dataList)), np.nan)
+    for rowi, modeli in enumerate(model):
+        # Wilhelm and Renee do not estimate PEs.
+        assert not modeli in ['W', 'R'], 'Model has no estimated PE'
+        
+        for filei, file in enumerate(dataList):
+            data = pd.read_csv(datadir / file, index_col='Unnamed: 0')
+            
+            # For each trial, is the predicitive cue selected,
+            for triali, trial in data.iterrows():
+                if signed:
+                    LCmatrix[rowi, triali, filei] = trial[f'RPE_{modeli}']
+                else:
+                    LCmatrix[rowi, triali, filei] = abs(trial[f'RPE_{modeli}'])
+    
+    meanLC = np.nanmean(LCmatrix, axis=2)
+    # Switch points
+    ##SG: Only once since all data used the same experimental structure (at
+        # least for the simulations -- fix this  when using participant data).
+    lag_relCueCol = data.relCueCol.eq(data.relCueCol.shift())
+    switches = np.where(lag_relCueCol == False)[0][1:]
+    ## Lengt of the switch point bars
+    barlen = (np.min(meanLC) + (np.min(meanLC) * 0.1),
+              np.max(meanLC) + (np.max(meanLC) * 0.1))
+
+    # Plot
+    # ----
+    plt.figure(plotnr)
+    plt.xlabel('Trials')
+    plt.ylabel('Mean prediction errors')
+    plt.ylim(-1.1, 1.1)
+    
+    # Plot all participants and not the mean
+    for rowi, modeli in enumerate(model):
+        plt.plot(meanLC[rowi, :], label=models[modeli])
+        if peaks:
+            peakpoints, _ = signal.find_peaks(meanLC[rowi, :])
+            plt.plot(peakpoints, meanLC[rowi, :][peakpoints], '-x',
+                      label=f'peaks {models[modeli]}')
+    plt.vlines(switches, barlen[0], barlen[1], colors='black')
+    
+    plt.legend()
+    plt.tight_layout()
+    plt.suptitle(
+        f'Learning curve of prediction error over {len(dataList)} simulations',
+        y=.99)
 
     plt.show()
 
