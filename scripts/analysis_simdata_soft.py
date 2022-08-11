@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Analysis simulations: Softmax -- Version 3.3
-Last edit:  2022/08/03
+"""     Analysis simulations: Softmax -- Version 3.4
+Last edit:  2022/08/11
 Author(s):  Geysen, Steven (SG)
 Notes:      - Analysis of simulated data of the task used by
                 Marzecova et al. (2019)
             - Release notes:
-                * PE boxplot
+                * PE curve
                 
 To do:      - Nelder-Mead
             - Explore models
@@ -123,6 +123,13 @@ plotnr += 1
 # PE validity effect
 pf.pe_validity(MDLS, simList, SIM_DIR, plotnr)
 plotnr += 1
+
+# PE curve
+pf.pe_curve(MDLS, simList, SIM_DIR, plotnr)
+plotnr += 1
+for modeli in MDLS:
+    pf.pe_curve(modeli, simList, SIM_DIR, plotnr)
+    plotnr += 1
 
 
 

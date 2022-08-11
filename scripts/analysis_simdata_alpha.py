@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Analysis simulations: Alpha recovery -- Version 2.1
-Last edit:  2022/08/05
+"""     Analysis simulations: Alpha recovery -- Version 2.2
+Last edit:  2022/08/11
 Author(s):  Geysen, Steven (SG)
 Notes:      - Analysis of the task used by Marzecova et al. (2019), simulated
                 with argmax policy
             - Release notes:
-                * PE validity effect
-                * 1 dimensional grid search
+                * PE curve
                 
 To do:      - Nelder-Mead
             - Explore models
@@ -110,6 +109,13 @@ plotnr += 1
 # PE validity effect
 pf.pe_validity(MDLS, simList, SIM_DIR, plotnr)
 plotnr += 1
+
+# PE curve
+pf.pe_curve(MDLS, simList, SIM_DIR, plotnr, signed=False)
+plotnr += 1
+for modeli in MDLS:
+    pf.pe_curve(modeli, simList, SIM_DIR, plotnr, signed=False)
+    plotnr += 1
 
 
 
