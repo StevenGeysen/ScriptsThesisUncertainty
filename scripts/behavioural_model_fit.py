@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Behavioural model fit -- Version 1.2
-Last edit:  2022/08/05
+"""     Behavioural model fit -- Version 1.3
+Last edit:  2022/08/15
 Author(s):  Geysen, Steven (SG)
 Notes:      - Fit models to behavioural data of Marzecova et al. (2019)
             - Release notes:
+                * Data exploration
                 * Argmax gridsearch
                 
 To do:      - Fit models
@@ -147,6 +148,76 @@ for ppi in range(npp):
 # =============================================================================
 
 
+#%% ~~ Plots ~~ %%#
+#-----------------#
+
+
+# Response times
+rt_valid = np.where(un_data['validity'] == 1,
+                    un_data['RT'], np.nan)
+rt_invalid = np.where(un_data['validity'] == 0,
+                    un_data['RT'], np.nan)
+
+plt.figure(plotnr)
+fig, ((ax0, ax1)) = plt.subplots(nrows=1, ncols=2)
+
+ax0.hist(rt_valid, bins=30)
+ax0.set_title('Valid RT (s)')
+
+fig.suptitle('RT distribution participants', fontsize=14)
+
+ax1.hist(rt_invalid, bins=30)
+ax1.set_title('Invalid RT (s)')
+
+plt.show()
+
+
+#%%
+
+# Plot specs
+labels = ['Valid trials', 'Invalid trials']
+
+
+
+# Preparation
+# -----------
+# Sort valid and invalid trials
+valid_rt = []
+invalid_rt = []
+valid_rt.append(list(un_data['RT'].loc[un_data['validity'] == 1]))
+invalid_rt.append(list(un_data['RT'].loc[un_data['validity'] == 0]))
+## Reshape
+valid_long = [i for listi in valid_rt for i in listi]
+invalid_long = [i for listi in invalid_rt for i in listi]
+
+# Plot data
+rt_data = [valid_long, invalid_long]
+
+# Plot
+# ----
+plt.figure(plotnr)
+fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(9, 4))
+fig.suptitle('Validity effect')
+vplot, bplot = axs[0], axs[1]
+
+# Violin plot
+# vplot.violinplot(rt_data,
+#                  showmeans=False,
+#                  showmedians=True)
+# vplot.set_title('Violin plot participants')
+# Box plot
+bplot.boxplot(rt_data)
+bplot.set_title('Box plot participants')
+
+for ax in axs:
+    ax.yaxis.grid(True)
+    ax.set_xticks([y + 1 for y in range(len(rt_data))],
+                  labels=labels)
+    ax.set_xlabel('Trial type')
+    ax.set_ylabel('Estimated prediction errors')
+
+plt.show()
+
 
 #%% ~~ Fitting ~~ %%#
 #####################
@@ -247,7 +318,7 @@ for ppi in range(npp):
     for locm, modeli in enumerate(MDLS):
         for loca, alphai in enumerate(alpha_options):
             for iti in range(N_ITERS):
-                one_pp[loca, locm] += bf.sim_negSpearCor((alphai, ), pp_data,
+                one_pp[loca, locm] += bf.pp_negSpearCor((alphai, ), pp_data,
                                                          model=modeli)
         modeldata = one_pp[:, locm] / N_ITERS
         # Optimal values

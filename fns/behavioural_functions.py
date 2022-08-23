@@ -130,7 +130,7 @@ def ppRW_1c(parameters, data, asm='soft'):
             probcue = 0.5
         else:
             selcue, probcue = af.policy(asm, Q_est[triali - 1, :],
-                                        parameters[1])
+                                        parameters[-1])
         ppDict['selCue_RW'].append(selcue)
         ppDict['prob_RW'].append(probcue)
         
@@ -231,7 +231,7 @@ def ppHybrid_1c(parameters, data, salpha=0.01, asm='soft'):
             probcue = 0.5
         else:
             selcue, probcue = af.policy(asm, Q_est[triali - 1, :],
-                                        parameters[1])
+                                        parameters[-1])
         ppDict['selCue_H'].append(selcue)
         ppDict['prob_H'].append(probcue)
         
@@ -339,7 +339,7 @@ def ppRW_2c(parameters, data, asm='soft'):
             probcue = 0.5
         else:
             selcue, probcue = af.policy(asm, Q_est[triali - 1, :],
-                                        parameters[1])
+                                        parameters[-1])
         ppDict['selCue_RW2'].append(selcue)
         ppDict['prob_RW2'].append(probcue)
         
@@ -441,7 +441,7 @@ def ppHybrid_2c(parameters, data, salpha=0.01, asm='soft'):
             probcue = 0.5
         else:
             selcue, probcue = af.policy(asm, Q_est[triali - 1, :],
-                                        parameters[1])
+                                        parameters[-1])
         ppDict['selCue_H2'].append(selcue)
         ppDict['prob_H2'].append(probcue)
         
@@ -628,7 +628,9 @@ def pp_negSpearCor(thetas, data, model):
     # Rename to avoid duplicates
     data = data.rename(columns={f'selCue_{model}': 'selCue',
                                 f'prob_{model}': 'prob',
-                                f'RPE_{model}': 'RPE'})
+                                f'RPE_{model}': 'RPE',
+                                f'Qest_0_{model}': 'Qest_0',
+                                f'Qest_1_{model}': 'Qest_1',})
     # Simulate data
     modelDict = pp_models()
     simData = modelDict[model](thetas, data)
