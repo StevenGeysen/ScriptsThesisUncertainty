@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Simulation functions -- Version 2.3.2
-Last edit:  2022/07/17
+"""     Simulation functions -- Version 2.3.3
+Last edit:  2022/08/23
 Author(s):  Geysen, Steven (SG)
 Notes:      - Functions used for the simulation of the task used by
                 Marzecova et al. (2019). Both structure and models.
@@ -13,7 +13,7 @@ Notes:      - Functions used for the simulation of the task used by
                 * (negaitve) log likelihood
                 * Negative Spearman correlation
             - Release notes:
-                * Fixed indexing parameters
+                * Changed validity coding
             
 To do:      - 
             
@@ -142,7 +142,9 @@ def sim_experiment(simnr=1, ntrials=640, nswitch=7):
         target = abs(relCueCol - np.random.choice(
             n_stim, p=[prob[stim[relCueCol]], 1 - prob[stim[relCueCol]]]))
         dataDict['targetLoc'].append(target)
-        dataDict['validity'].append(stim[relCueCol] == target)
+        ##SG: Valid trials are coded as 0, invalid as 1. For consistancy with
+            # behavioural data.
+        dataDict['validity'].append(abs(1 - (stim[relCueCol] == target)))
     
     data = pd.DataFrame(dataDict, columns=column_list)
 
