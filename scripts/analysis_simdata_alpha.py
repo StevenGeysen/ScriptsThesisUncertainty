@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Analysis simulations: Alpha recovery -- Version 2.2
-Last edit:  2022/08/11
+"""     Analysis simulations: Alpha recovery -- Version 2.2.1
+Last edit:  2022/08/23
 Author(s):  Geysen, Steven (SG)
 Notes:      - Analysis of the task used by Marzecova et al. (2019), simulated
                 with argmax policy
             - Release notes:
-                * PE curve
+                * Binned PE
                 
 To do:      - Nelder-Mead
             - Explore models
@@ -29,8 +29,10 @@ import time
 import numpy as np
 import pandas as pd
 
+import fns.assisting_functions as af
 import fns.plot_functions as pf
 import fns.sim_functions as sf
+import matplotlib.pyplot as plt
 
 from pathlib import Path
 from scipy import optimize, stats
@@ -56,14 +58,20 @@ exStruc = pd.read_csv(SIM_DIR / simList[0], index_col='Unnamed: 0')
 N_ITERS = 10
 # Models with optimiseable parameters
 MDLS = ['RW', 'H']
+# Number of trials in bin
+binsize = 10
 
 # Alpha/eta options
 alpha_options = np.linspace(0.01, 1, 40)
 
-# Plot number
+# Plot specs
+## Plot number
 plotnr = 0
-
-
+## Model labels
+models = af.labelDict()
+## Switch points
+lag_relCueCol = exStruc.relCueCol.eq(exStruc.relCueCol.shift())
+switches = np.where(lag_relCueCol == False)[0]
 
 
 #%% ~~ Exploration ~~ %%#
@@ -107,14 +115,60 @@ pf.p_stay(simList, SIM_DIR, plotnr)
 plotnr += 1
 
 # PE validity effect
-pf.pe_validity(MDLS, simList, SIM_DIR, plotnr)
+pf.pe_validity(MDLS, simList, SIM_DIR)
 plotnr += 1
 
-# PE curve
+# PE over time
+## PE curve
 pf.pe_curve(MDLS, simList, SIM_DIR, plotnr, signed=False)
 plotnr += 1
 for modeli in MDLS:
     pf.pe_curve(modeli, simList, SIM_DIR, plotnr, signed=False)
+    plotnr += 1
+
+
+## Binned PE
+firstDict = {keyi: [] for keyi in MDLS}
+lastDict = {keyi: [] for keyi in MDLS}
+
+for simi, filei in enumerate(simList):
+    simData = pd.read_csv(SIM_DIR / filei, index_col='Unnamed: 0')
+    ## Bin RT of first and last b trials
+    for modeli in MDLS:
+        sim_pe = simData[f'RPE_{modeli}']
+        for starti, endi in af.pairwise(switches):
+            firstDict[modeli].append(np.nanmean(sim_pe[starti:
+                                                       starti + binsize]))
+            lastDict[modeli].append(np.nanmean(sim_pe[endi - binsize:
+                                                      endi + 1]))
+
+for modeli in MDLS:
+    ## Remove NaN values
+    firstlist = [i for i in firstDict[modeli] if np.isnan(i) == False]
+    lastlist = [i for i in lastDict[modeli] if np.isnan(i) == False]
+    plotbins = [firstlist, lastlist]
+    
+    fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(9, 4))
+    fig.suptitle(f'Mean binned PE {models[modeli]}, Argmax')
+    vplot, bplot = axs[0], axs[1]
+    ## Violin plot
+    vplot.violinplot(plotbins,
+                      showmeans=False,
+                      showmedians=True)
+    vplot.set_title('Violin plot simulations')
+    ## Box plot
+    bplot.boxplot(plotbins)
+    bplot.set_title('Box plot simulations')
+    
+    for ax in axs:
+        ax.yaxis.grid(True)
+        ax.set_xticks([y + 1 for y in range(len(plotbins))],
+                      labels=[f'First {binsize} trials',
+                              f'Last {binsize} trials'])
+        ax.set_xlabel('Trial numbers')
+        ax.set_ylabel('Estimated PEs')
+    
+    plt.show()
     plotnr += 1
 
 
