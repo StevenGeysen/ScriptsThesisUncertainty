@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Plot functions -- Version 3.1
-Last edit:  2022/08/11
+"""     Plot functions -- Version 3.1.1
+Last edit:  2022/08/23
 Author(s):  Geysen, Steven (SG)
 Notes:      - Functions used to plot output
                 * Sanity checks
@@ -14,10 +14,10 @@ Notes:      - Functions used to plot output
                 * Heatmaps
             - Release notes:
                 * PE curve
+                * Removed obsolete plotnrs
             
 To do:      - Add functions of other often used plots
-            - Learning curve with participant data
-            - Clean up validity plot
+            - Make plots work with participant data
             
 Comments:   
             
@@ -107,7 +107,7 @@ def selplot(data, model, plotnr, thetas=None, pp=''):
 
 
 # ~~ RT distribution plot ~~ #
-def rt_dist(data, model, thetas, plotnr, pp=''):
+def rt_dist(data, model, thetas, pp=''):
     """
     Plot distributions of response times, simulated by the model
 
@@ -122,8 +122,6 @@ def rt_dist(data, model, thetas, plotnr, pp=''):
             H - RW-PH hybrid
     thetas : list, array, tuple
         Parameter values.
-    plotnr : int
-        Plot number.
     pp : int, optional
         Number of the participant or simulation. The default is ''.
 
@@ -142,6 +140,9 @@ def rt_dist(data, model, thetas, plotnr, pp=''):
                         data[f'rt_{model}'], np.nan)
     rt_invalid = np.where(data['relCue'] != data['targetLoc'],
                         data[f'rt_{model}'], np.nan)
+    plotdata = [rt_valid, rt_invalid]
+    plabels = ['Valid RT (s)', 'Invalid RT (s)']
+    
     # Set title
     if model[:2] == 'RW':
         model_par = '$\u03B1$'
@@ -150,21 +151,17 @@ def rt_dist(data, model, thetas, plotnr, pp=''):
     title = f'RT distribution {pp} {models[model]}: \
         {model_par} = {round(thetas[0], 4)}; $\u03B2$ = {round(thetas[1], 4)}'
     
-    plt.figure(plotnr)
-    fig, ((ax0, ax1)) = plt.subplots(nrows=1, ncols=2)
-    
-    ax0.hist(rt_valid, bins=30)
-    ax0.set_title('Valid RT (s)')
-    
+    fig, axs = plt.subplots(nrows=1, ncols=2)
     fig.suptitle(title, fontsize=14)
     
-    ax1.hist(rt_invalid, bins=30)
-    ax1.set_title('Invalid RT (s)')
+    for i, rtdata in enumerate(plotdata):
+        axs[i].hist(rtdata, bins=30)
+        axs[i].set_title(plabels[i])
 
     plt.show()
 
 
-def pe_validity(model, dataList, datadir, plotnr, wsls=False):
+def pe_validity(model, dataList, datadir, wsls=False):
     """
     Box plot and violin plot
     Visual inspection of validity effect in perdiction errors.
@@ -180,8 +177,8 @@ def pe_validity(model, dataList, datadir, plotnr, wsls=False):
         List containing the data filenames.
     datadir : Path
         Location of the data.
-    plotnr : int
-        Plot number.
+    wsls : bool, optional
+        Set to True for plotting WSLS model. The default is False.
 
     Returns
     -------
@@ -195,7 +192,6 @@ def pe_validity(model, dataList, datadir, plotnr, wsls=False):
         model = [model]
 
     # Plot specs
-    plt.figure(plotnr)
     fig, axs = plt.subplots(nrows=len(model), ncols=2,
                             figsize=(9, 4 * len(model)))
     fig.suptitle('Validity effect')
@@ -637,7 +633,7 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
     return texts
 
 
-def heatmap_1d(model, plotdata, minima, tickvalues, plotnr, truevalue=None):
+def heatmap_1d(model, plotdata, minima, tickvalues, truevalue=None):
     """
     1D heatmap
     Plot a heatmap and line graph for a 1 dimensional array.
@@ -683,7 +679,6 @@ def heatmap_1d(model, plotdata, minima, tickvalues, plotnr, truevalue=None):
 
     # Plot
     # ----
-    plt.figure(plotnr)
     fig, (hplot, lplot) = plt.subplots(nrows=2, sharex=True, figsize=(5, 2))
     # Heatmap
     hplot.imshow(plotdata[np.newaxis, :], cmap='plasma', aspect='auto',
