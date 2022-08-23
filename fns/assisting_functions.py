@@ -1,25 +1,29 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Assisting functions -- Version 1.1
-Last edit:  2022/07/06
+"""     Assisting functions -- Version 1.2
+Last edit:  2022/07/23
 Author(s):  Geysen, Steven (SG)
-Notes:      - Assisting functions to reduce repetition in other functions
+Notes:      - Assisting functions to reduce repetition
                 * labelDict
                 * policy
                 * save_data
+                * pairwise
             - Release notes:
-                * Policy ()
+                * pairwise
 To do:      - 
             
 Questions:  
 Comments:   
 Sources:    https://goodresearch.dev/setup.html
+            https://docs.python.org/3/library/itertools.html#itertools.pairwise
 """
 
 
 
 #%% ~~ Imports ~~ %%#
 
+
+import itertools
 
 import numpy as np
 import pandas as pd
@@ -101,6 +105,17 @@ def save_data(dataDict, strucData, column_list):
 
     # Output dataframe
     return modelData
+
+
+def pairwise(iterable):
+    """
+    pairwise('ABCDEFG') --> AB BC CD DE EF FG
+    https://docs.python.org/3/library/itertools.html#itertools.pairwise
+    """
+    a, b = itertools.tee(iterable)
+    next(b, None)
+
+    return zip(a, b)
 
 
 
