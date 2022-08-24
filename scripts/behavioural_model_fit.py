@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Behavioural model fit -- Version 1.5
-Last edit:  2022/08/23
+"""     Behavioural model fit -- Version 1.7
+Last edit:  2022/08/24
 Author(s):  Geysen, Steven (SG)
 Notes:      - Fit models to behavioural data of Marzecova et al. (2019)
             - Release notes:
-                * RT validity effect
-                * RT over time
+                * Fixed argmax gridsearch
                 
 To do:      - Fit models
             - Statistics
@@ -98,11 +97,12 @@ invalid_data = un_data[un_data['validity'] == 1]
 # Number of iterations
 N_ITERS = 10
 # Models with optimiseable parameters
+# MDLS = ['RW', 'H', 'M']
 MDLS = ['RW', 'H']
 # Number of participants
 npp = un_data['id'].max()
 # Number of trials in bin
-binsize = 5
+binsize = 15
 
 # Alpha/eta options
 alpha_options = np.linspace(0.01, 1, 40)
@@ -420,7 +420,7 @@ print(stats.ttest_rel(gridThetas[:, 0], gridThetas[:, 1], nan_policy='omit'))
 
 
 #%% test
-gridThetas = np.zeros((npp, len(MDLS), len(alpha_options)))
+gridThetas = np.zeros((npp, len(MDLS), len(alpha_options) + 1))
 
 start_total = time.time()
 for ppi in range(npp):
@@ -438,15 +438,15 @@ for ppi in range(npp):
                 gridThetas[ppi, locm, loca] += bf.pp_negSpearCor((alphai, ),
                                                                  pp_data,
                                                                  model=modeli)
-        modeldata = gridThetas[ppi, locm, :] / N_ITERS
+        modeldata = gridThetas[ppi, locm, :-1] / N_ITERS
         # Optimal values
         toploc = [i[0] for i in np.where(modeldata == np.min(modeldata))]
-        gridThetas[ppi, locm] = alpha_options[toploc[0]]
+        gridThetas[ppi, locm, -1] = alpha_options[toploc[0]]
     print(f'Duration pp {ppi}: {round((time.time() - start_pp) / 60, 2)} minutes')
     
     if ppi % 2 == 0:
         pf.heatmap_1d(modeli, modeldata, toploc, alpha_options,
-                      gridThetas[ppi])
+                      gridThetas[ppi, :, -1])
         plotnr += 1
         print(gridThetas[ppi])
 print(f'Duration total: {round((time.time() - start_total) / 60, 2)} minutes')
@@ -454,7 +454,9 @@ print(f'Duration total: {round((time.time() - start_total) / 60, 2)} minutes')
 
 ##SG: Paired t-test to see if the difference between the estimated model
     # parameters is big.
-print(stats.ttest_rel(gridThetas[:, 0], gridThetas[:, 1], nan_policy='omit'))
+print(stats.ttest_rel(gridThetas[:, 0, -1], gridThetas[:, 1, -1],
+                      nan_policy='omit'))
+
 
 
 #%% ~~ Nelder - Mead ~~ %%#
