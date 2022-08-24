@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Plot functions -- Version 3.1.1
-Last edit:  2022/08/23
+"""     Plot functions -- Version 3.2
+Last edit:  2022/08/24
 Author(s):  Geysen, Steven (SG)
 Notes:      - Functions used to plot output
                 * Sanity checks
@@ -13,11 +13,11 @@ Notes:      - Functions used to plot output
                 * Stay behaviour
                 * Heatmaps
             - Release notes:
-                * PE curve
-                * Removed obsolete plotnrs
+                * Implement Michelle
             
 To do:      - Add functions of other often used plots
             - Make plots work with participant data
+            - Add new model
             
 Comments:   
             
@@ -62,6 +62,7 @@ def selplot(data, model, plotnr, thetas=None, pp=''):
         Name of the used model:
             RW - Rescorla-Wagner
             H - RW-PH hybrid
+            M - Meta learner
             W - Win-stay-lose-shift
             R - Random
     thetas : list, array, tuple
@@ -84,7 +85,7 @@ def selplot(data, model, plotnr, thetas=None, pp=''):
     if not model in ['W', 'R']:
         if model[:2] == 'RW':
             model_par = '$\u03B1$'
-        else:
+        elif model == 'H':
             model_par = '$\u03B7$'
         title = f'Cue selection {pp} {models[model]}: \
             {model_par} = {round(thetas[0], 4)}; $\u03B2$ = {round(thetas[1], 4)}'
@@ -120,6 +121,7 @@ def rt_dist(data, model, thetas, pp=''):
         Name of the used model:
             RW - Rescorla-Wagner
             H - RW-PH hybrid
+            M - Meta learner
     thetas : list, array, tuple
         Parameter values.
     pp : int, optional
@@ -133,7 +135,7 @@ def rt_dist(data, model, thetas, pp=''):
     models = af.labelDict()
     model = model.upper()
     # Wilhelm and Renee do not simulate RTs.
-    assert not model in ['W', 'R'], 'Model has no simulated RT'
+    assert not model in ['W', 'R', 'M'], 'Model has no simulated RT'
 
     # Response times
     rt_valid = np.where(data['relCue'] == data['targetLoc'],
@@ -173,6 +175,7 @@ def pe_validity(model, dataList, datadir, wsls=False):
         Name of the used model:
             RW - Rescorla-Wagner
             H - RW-PH hybrid
+            M - Meta learner
     dataList : list
         List containing the data filenames.
     datadir : Path
@@ -199,7 +202,7 @@ def pe_validity(model, dataList, datadir, wsls=False):
 
     for rowi, modeli in enumerate(model):
         # Wilhelm and Renee do not estimate PEs.
-        assert not modeli in ['W', 'R'], 'Model has no estimated PE'
+        assert not modeli in ['W', 'R', 'M'], 'Model has no estimated PE'
 
         # Preparation
         # -----------
@@ -432,6 +435,7 @@ def pe_curve(model, dataList, datadir, plotnr, signed=True, peaks=False):
         Name of the used model:
             RW - Rescorla-Wagner
             H - RW-PH hybrid
+            M - Meta learner
     dataList : list
         List containing the data filenames.
     datadir : Path
@@ -461,7 +465,7 @@ def pe_curve(model, dataList, datadir, plotnr, signed=True, peaks=False):
     LCmatrix = np.full((len(model), 640, len(dataList)), np.nan)
     for rowi, modeli in enumerate(model):
         # Wilhelm and Renee do not estimate PEs.
-        assert not modeli in ['W', 'R'], 'Model has no estimated PE'
+        assert not modeli in ['W', 'R', 'M'], 'Model has no estimated PE'
         
         for filei, file in enumerate(dataList):
             data = pd.read_csv(datadir / file, index_col='Unnamed: 0')

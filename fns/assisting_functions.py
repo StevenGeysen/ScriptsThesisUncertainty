@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Assisting functions -- Version 1.2
-Last edit:  2022/07/23
+"""     Assisting functions -- Version 2
+Last edit:  2022/07/24
 Author(s):  Geysen, Steven (SG)
 Notes:      - Assisting functions to reduce repetition
                 * labelDict
@@ -9,13 +9,14 @@ Notes:      - Assisting functions to reduce repetition
                 * save_data
                 * pairwise
             - Release notes:
-                * pairwise
+                * Biased SoftMax
 To do:      - 
             
 Questions:  
 Comments:   
 Sources:    https://goodresearch.dev/setup.html
             https://docs.python.org/3/library/itertools.html#itertools.pairwise
+            https://doi.org/10.1016/j.cub.2021.12.006
 """
 
 
@@ -43,11 +44,12 @@ def labelDict():
     return {'RW': 'Rescorla-Wagner',
             'H': 'RW-PH Hybrid',
             'W': 'WSLS',
+            'M': 'Meta learner',
             'R': 'Random',
             'PP': 'Participant'}
 
 
-def policy(asm, Qest, beta=None):
+def policy(asm, Qest, beta=-1, bias=0):
     """
     Policy
     Select cue from with the argmax or SoftMax action selection method.
@@ -59,7 +61,10 @@ def policy(asm, Qest, beta=None):
     Qest : itarable
         Estimated values of previous trial.
     beta : float, optional
-        SoftMax temperature. The default is None.
+        SoftMax temperature (inverse temperature in biased SoftMax).
+        The default is -1.
+    bias : float, optional
+        The bias term of the biased SoftMax. The default is 0.
 
     Returns
     -------
@@ -67,19 +72,26 @@ def policy(asm, Qest, beta=None):
         Selected cue.
     """
 
+    asm = asm.upper()
     # Argmax
-    if asm.upper() == 'ARG':
+    if asm == 'ARG':
         selcue = np.argmax(Qest)
         probcue = 1
     
     # SoftMax
-    elif asm.upper() == 'SOFT':
-        # Need beta value if SoftMax is used
-        assert not beta is None, 'Missing beta value'
+    elif asm[-4:] == 'SOFT':
+        ## Need beta value if SoftMax is used
+        assert beta > 0, 'Missing beta value'
         
         ## Probability of cue 0
-        probcue = np.exp(beta * Qest[0]) / \
-            np.sum(np.exp(np.multiply(beta, Qest)))
+        if len(asm) == 4:
+            probcue = np.exp(beta * Qest[0]) / \
+                np.sum(np.exp(np.multiply(beta, Qest)))
+        
+        # Biased SoftMax
+        elif len(asm) == 5:
+            probcue = 1 / (1 + np.exp(-beta  * (Qest[0] - Qest[1] + bias)))
+        
         ##SG: If the probability of cue 0 is smaller than a random value,
             # follow cue 1.
         temp = np.random.rand() <= probcue

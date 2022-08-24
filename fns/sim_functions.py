@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Simulation functions -- Version 2.3.3
-Last edit:  2022/08/23
+"""     Simulation functions -- Version 3
+Last edit:  2022/08/24
 Author(s):  Geysen, Steven (SG)
 Notes:      - Functions used for the simulation of the task used by
                 Marzecova et al. (2019). Both structure and models.
                 * Models
                     - Rescorla-Wagner (Daphne)
                     - Rescorla-Wagner - Pearce-Hall hybrid (Hugo)
+                    - Meta learner (Michelle)
                     - Win-stay-lose-shift (Wilhelm)
                     - Random (Renee)
                 * (negaitve) log likelihood
                 * Negative Spearman correlation
             - Release notes:
-                * Changed validity coding
+                * Start Meta learner
             
-To do:      - 
+To do:      - Meta learner
             
 Comments:   SG: Simulations return pandas.DataFrame. Model functions return
                 originale data with model selection appended.
@@ -200,6 +201,7 @@ def sim_models():
     return {'RW': simRW_1c,
             'RW2': simRW_2c,
             'H': simHybrid_1c,
+            'M': simMeta_1c,
             'H2': simHybrid_2c,
             'W': simWSLS,
             'R': simRandom}
@@ -225,9 +227,9 @@ def simRW_1c(parameters, data, asm='soft'):
     Parameters
     ----------
     parameters : tuple, list, array
-        First parameter is the learning rate in the model.
-        Second parameter is constant in action selection method.
-        The default is (0.01, 0.5).
+        First parameter is the learning rate of the model (0 <= alpha <= 1).
+        Second parameter is the constant of the action selection method
+            (0 < beta)..
     data : pandas.DataFrame
         Dataframe containing the structure of the experiment.
     asm : string, optional
@@ -266,6 +268,12 @@ def simRW_1c(parameters, data, asm='soft'):
     # Policy
     ## Selected cue
     selcue = np.nan
+    
+    # Parameters
+    alpha, beta = parameters[:2]
+    bias = 0
+    if len(parameters) > 2:
+        bias = parameters[-1]
 
     # Trial loop
     for triali, trial in data.iterrows():
@@ -277,7 +285,7 @@ def simRW_1c(parameters, data, asm='soft'):
             probcue = 0.5
         else:
             selcue, probcue = af.policy(asm, Q_est[triali - 1, :],
-                                        parameters[-1])
+                                        beta, bias)
         simDict['selCue_RW'].append(selcue)
         simDict['prob_RW'].append(probcue)
         
@@ -293,16 +301,14 @@ def simRW_1c(parameters, data, asm='soft'):
         if triali == 0:
             # Reward prediction error
             rpe = reward - Q_est[triali, selcue]
-            # Cue estimates
-            Q_est[triali, selcue] = Q_est[triali, selcue] + parameters[0] * rpe
         else:
             # Reward prediction error
             rpe = reward - Q_est[triali - 1, selcue]
             # Cue estimates
             ## Repeat cue estimates of previous trial
             Q_est[triali, :] = Q_est[triali - 1, :]
-            ## Update cue estimate of selected stimulus in current trial
-            Q_est[triali, selcue] = Q_est[triali, selcue] + parameters[0] * rpe
+        ## Update cue estimate of selected stimulus in current trial
+        Q_est[triali, selcue] = Q_est[triali, selcue] + alpha * rpe
         simDict['RPE_RW'].append(rpe)
         for qi, q_est in enumerate(Q_est[triali, :]):
             simDict[f'Qest_{qi}_RW'].append(q_est)
@@ -324,9 +330,9 @@ def simHybrid_1c(parameters, data, salpha=0.01, asm='soft'):
     Parameters
     ----------
     parameters : tuple, list, array
-        First parameter is eta.
-        Second parameter is constant in action selection method.
-        The default is (0.01, 0.5).
+        First parameter is eta (0 <= eta <= 1).
+        Second parameter is the constant of the action selection method
+            (0 < beta).
     data : pandas.DataFrame
         Dataframe containing the structure of the experiment.
     salpha : float, optional
@@ -371,6 +377,12 @@ def simHybrid_1c(parameters, data, salpha=0.01, asm='soft'):
     # Policy
     ## Selected cue
     selcue = np.nan
+    
+    # Parameters
+    eta, beta = parameters[:2]
+    bias = 0
+    if len(parameters) > 2:
+        bias = parameters[-1]
 
     # Trial loop
     for triali, trial in data.iterrows():
@@ -382,7 +394,7 @@ def simHybrid_1c(parameters, data, salpha=0.01, asm='soft'):
             probcue = 0.5
         else:
             selcue, probcue = af.policy(asm, Q_est[triali - 1, :],
-                                        parameters[-1])
+                                        beta, bias)
         simDict['selCue_H'].append(selcue)
         simDict['prob_H'].append(probcue)
         
@@ -398,24 +410,18 @@ def simHybrid_1c(parameters, data, salpha=0.01, asm='soft'):
         if triali == 0:
             # Reward prediction error
             rpe = reward - Q_est[triali, selcue]
-            # Alpha (PH)
-            alpha[triali, selcue] = parameters[0] * np.abs(rpe) + \
-                (1 - parameters[0]) * alpha[triali, selcue]
-            # Cue estimates
-            Q_est[triali, selcue] = Q_est[triali, selcue] + \
-                alpha[triali, selcue] * rpe
         else:
             # Reward prediction error
             rpe = reward - Q_est[triali - 1, selcue]
             # Update values of selected stimulus in current trial
             alpha[triali, :] = alpha[triali - 1, :]
             Q_est[triali, :] = Q_est[triali - 1, :]
-            # Alpha (PH)
-            alpha[triali, selcue] = parameters[0] * np.abs(rpe) + \
-                (1 - parameters[0]) * alpha[triali, selcue]
-            # Cue estimates
-            Q_est[triali, selcue] = Q_est[triali, selcue] + \
-                alpha[triali, selcue] * rpe
+        # Alpha (PH)
+        alpha[triali, selcue] = eta * np.abs(rpe) + \
+            (1 - eta) * alpha[triali, selcue]
+        # Cue estimates
+        Q_est[triali, selcue] = Q_est[triali, selcue] + \
+            alpha[triali, selcue] * rpe
         simDict['RPE_H'].append(rpe)
         simDict['alpha_H'].append(alpha[triali, selcue])
         for qi, q_est in enumerate(Q_est[triali, :]):
@@ -423,6 +429,114 @@ def simHybrid_1c(parameters, data, salpha=0.01, asm='soft'):
         
         # Response time
         simDict['rt_H'].append(sim_rt(rpe))
+
+    return af.save_data(simDict, data, var_list)
+
+
+def simMeta_1c(parameters, data, asm='soft'):
+    """
+    Michelle the meta learner
+    The meta learning model of Cohen and his team.
+    https://doi.org/10.1016/j.neuron.2019.06.001
+    https://doi.org/10.1016/j.cub.2021.12.006
+
+    Parameters
+    ----------
+    parameters : tuple, list, array
+        First parameter is the learning rate of the model (0 <= alpha <= 1).
+        Second parameter is the constant of the action selection method
+            (0 < beta).
+        Third parameter is the forgetting rate of the model (zeta).
+        Fourth parameter is the bias term of the biased SoftMax (bias). The
+            default is 0.
+    data : pandas.DataFrame
+        Dataframe containing the structure of the experiment.
+    asm : string, optional
+        The action selection method, policy. The default is SoftMax.
+
+    Returns
+    -------
+    simData : pandas.DataFrame
+        Contains columns of 'data' and simulated behaviour of Michelle:
+            0. 'selCue_M' - selected cue by the meta learning model
+            1. 'prob_M' - probability to select cue 0
+            2. 'rt_M' - response time
+            3. 'reward_M' - reward based on cue selected by meta learner
+            4. 'RPE_M' - reward prediction error
+            5. 'Qest_0_M' - estimated value of cue 0
+            6. 'Qest_1_M' - estimated value of cue 1
+    """
+    # Variables
+    # ---------
+    # Dataframe
+    var_list = [
+        'selCue_M', 'prob_M', 'rt_M', 'reward_M',
+        'RPE_M', 'Qest_0_M', 'Qest_1_M'
+        ]
+    simDict = {vari:[] for vari in var_list}
+    
+    # Number of trials
+    n_trials = data.shape[0]
+    # Number of cues
+    N_CUES = 2
+    # Model
+    ## Estimated value of cue
+    Q_est = np.full((n_trials, N_CUES), 1/N_CUES)
+    ## Estimate of expected uncertainty calculated from the history of URPEs
+    epsilon = 0.5
+    
+    # Policy
+    ## Selected cue
+    selcue = np.nan
+    
+    # Parameters
+    alpha, beta, zeta = parameters[:3]
+    bias = 0
+    if len(parameters) > 3:
+        bias = parameters[-1]
+
+    # Trial loop
+    for triali, trial in data.iterrows():
+        # Policy
+        # ------
+        ## Random for first trial
+        if triali == 0:
+            selcue = np.random.randint(N_CUES)
+            probcue = 0.5
+        else:
+            selcue, probcue = af.policy(asm, Q_est[triali - 1, :],
+                                        beta, bias)
+        simDict['selCue_M'].append(selcue)
+        simDict['prob_M'].append(probcue)
+        
+        # Reward
+        # ------
+        ## Based on validity
+        ##AM: If cue==target reward = 1, if cue!=target reward = 0
+        reward = int(selcue == trial.targetLoc)
+        simDict['reward_M'].append(reward)
+        
+        # Update rule (RW)
+        # ----------------
+        if triali == 0:
+            # Reward prediction error
+            rpe = reward - Q_est[triali, selcue]
+        else:
+            # Reward prediction error
+            rpe = reward - Q_est[triali - 1, selcue]
+            # Cue estimates
+            ## Repeat cue estimates of previous trial
+            Q_est[triali, :] = Q_est[triali - 1, :]
+        ## Update cue estimate of selected stimulus in current trial
+        Q_est[triali, selcue] = zeta * Q_est[triali, selcue] + alpha * rpe
+        ## Forget not selected stimulus
+        Q_est[triali, abs(1 - selcue)] = zeta * Q_est[triali, abs(1 - selcue)]
+        simDict['RPE_M'].append(rpe)
+        for qi, q_est in enumerate(Q_est[triali, :]):
+            simDict[f'Qest_{qi}_M'].append(q_est)
+        
+        # Response time
+        simDict['rt_G'].append(sim_rt(rpe))
 
     return af.save_data(simDict, data, var_list)
 
@@ -443,9 +557,9 @@ def simRW_2c(parameters, data, asm='soft'):
     Parameters
     ----------
     parameters : tuple, list, array
-        First parameter is the learning rate in the model.
-        Second parameter is constant in action selection method.
-        The default is (0.01, 0.5).
+        First parameter is the learning rate of the model (0 <= alpha <= 1).
+        Second parameter is the constant of the action selection method
+            (0 < beta).
     data : pandas.DataFrame
         Dataframe containing the structure of the experiment.
     asm : string, optional
@@ -484,6 +598,12 @@ def simRW_2c(parameters, data, asm='soft'):
     # Policy
     ## Selected cue
     selcue = np.nan
+    
+    # Parameters
+    alpha, beta = parameters[:2]
+    bias = 0
+    if len(parameters) > 2:
+        bias = parameters[-1]
 
     # Trial loop
     for triali, trial in data.iterrows():
@@ -495,7 +615,7 @@ def simRW_2c(parameters, data, asm='soft'):
             probcue = 0.5
         else:
             selcue, probcue = af.policy(asm, Q_est[triali - 1, :],
-                                        parameters[1])
+                                        beta, bias)
         simDict['selCue_RW2'].append(selcue)
         simDict['prob_RW2'].append(probcue)
         
@@ -513,7 +633,7 @@ def simRW_2c(parameters, data, asm='soft'):
                 # Reward prediction error
                 rpe = reward - Q_est[triali, cuei]
                 # Cue estimates
-                Q_est[triali, cuei] = Q_est[triali, cuei] + parameters[0] * rpe
+                Q_est[triali, cuei] = Q_est[triali, cuei] + alpha * rpe
         else:
             # Repeat cue estimates of previous trial
             Q_est[triali, :] = Q_est[triali - 1, :]
@@ -521,7 +641,7 @@ def simRW_2c(parameters, data, asm='soft'):
                 # Reward prediction error
                 rpe = reward - Q_est[triali - 1, cuei]
                 # Cue estimates
-                Q_est[triali, cuei] = Q_est[triali, cuei] + parameters[0] * rpe
+                Q_est[triali, cuei] = Q_est[triali, cuei] + alpha * rpe
         simDict['RPE_RW2'].append(reward - Q_est[triali - 1, selcue])
         for qi, q_est in enumerate(Q_est[triali, :]):
             simDict[f'Qest_{qi}_RW2'].append(q_est)
@@ -543,9 +663,9 @@ def simHybrid_2c(parameters, data, salpha=0.01, asm='soft'):
     Parameters
     ----------
     parameters : tuple, list, array
-        First parameter is eta.
-        Second parameter is constant in action selection method.
-        The default is (0.01, 0.5).
+        First parameter is eta (0 <= eta <= 1).
+        Second parameter is the constant of the action selection method
+            (0 < beta).
     data : pandas.DataFrame
         Dataframe containing the structure of the experiment.
     salpha : float, optional
@@ -590,6 +710,12 @@ def simHybrid_2c(parameters, data, salpha=0.01, asm='soft'):
     # Policy
     ## Selected cue
     selcue = np.nan
+    
+    # Parameters
+    eta, beta = parameters[:2]
+    bias = 0
+    if len(parameters) > 2:
+        bias = parameters[-1]
 
     # Trial loop
     for triali, trial in data.iterrows():
@@ -601,7 +727,7 @@ def simHybrid_2c(parameters, data, salpha=0.01, asm='soft'):
             probcue = 0.5
         else:
             selcue, probcue = af.policy(asm, Q_est[triali - 1, :],
-                                        parameters[1])
+                                        beta, bias)
         simDict['selCue_H2'].append(selcue)
         simDict['prob_H2'].append(probcue)
         
@@ -619,8 +745,8 @@ def simHybrid_2c(parameters, data, salpha=0.01, asm='soft'):
                 # Reward prediction error
                 rpe = reward - Q_est[triali, cuei]
                 # Alpha (PH)
-                alpha[triali, cuei] = parameters[0] * np.abs(rpe) + \
-                    (1 - parameters[0]) * alpha[triali, cuei]
+                alpha[triali, cuei] = eta * np.abs(rpe) + \
+                    (1 - eta) * alpha[triali, cuei]
                 # Cue estimates
                 Q_est[triali, cuei] = Q_est[triali, cuei] + \
                     alpha[triali, cuei] * rpe
@@ -631,8 +757,8 @@ def simHybrid_2c(parameters, data, salpha=0.01, asm='soft'):
                 # Reward prediction error
                 rpe = reward - Q_est[triali - 1, cuei]
                 # Alpha (PH)
-                alpha[triali, cuei] = parameters[0] * np.abs(rpe) + \
-                    (1 - parameters[0]) * alpha[triali, cuei]
+                alpha[triali, cuei] = eta * np.abs(rpe) + \
+                    (1 - eta) * alpha[triali, cuei]
                 # Cue estimates
                 Q_est[triali, cuei] = Q_est[triali, cuei] + \
                     alpha[triali, cuei] * rpe
