@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Simulate data -- Version 1.2
-Last edit:  2022/08/03
+"""     Simulate data -- Version 2
+Last edit:  2022/08/24
 Author(s):  Geysen, Steven (SG)
 Notes:      - Simulations of the task used by Marzecova et al. (2019)
             - Release notes:
-                * More simulations with same parameter values
+                * Meta learner
                 
 To do:      - 
 Questions:  
@@ -43,6 +43,9 @@ if not Path.exists(SOFT_DIR):
 ARG_DIR = SIM_DIR / 'argmax'
 if not Path.exists(ARG_DIR):
     Path.mkdir(ARG_DIR)
+BIAS_DIR = SIM_DIR / 'biased'
+if not Path.exists(BIAS_DIR):
+    Path.mkdir(BIAS_DIR)
 
 
 
@@ -78,7 +81,9 @@ for simi in range(N_SIMS):
         # Models with argmax policy
         Daphne_arg = sf.simRW_1c((alphai, ), exStruc, asm='arg')
         Hugo_arg = sf.simHybrid_1c((alphai, ), Daphne_arg, asm='arg')
-        Wilhelm_arg = sf.simWSLS(Hugo_arg)
+        Michelle_arg = sf.simMeta_1c(alpha=alphai, beta=0, zeta=alphai,
+                                     data=Hugo_arg, asm='arg')
+        Wilhelm_arg = sf.simWSLS(Michelle_arg)
         Renee_arg = sf.simRandom(Wilhelm_arg)
         Renee_arg.to_csv(ARG_DIR / (title + '_argmax.csv'))
         
@@ -88,11 +93,24 @@ for simi in range(N_SIMS):
         # Models with SoftMax policy
         Daphne_soft = sf.simRW_1c((alphai, beta), exStruc)
         Hugo_soft = sf.simHybrid_1c((alphai, beta), Daphne_soft)
-        Wilhelm_soft = sf.simWSLS(Hugo_soft)
+        Michelle_soft = sf.simMeta_1c(alphai, beta, alphai, Hugo_soft)
+        Wilhelm_soft = sf.simWSLS(Michelle_soft)
         Renee_soft = sf.simRandom(Wilhelm_soft)
         Renee_soft.to_csv(SOFT_DIR / (title + f'_beta_{beta}_softmax.csv'))
         
         # pf.selplot(Renee_soft, 'rw', plotnr, thetas=(alphai, beta), pp=simi)
+        # plotnr += 1
+        
+        # Models with biased SoftMax policy
+        Daphne_bsoft = sf.simRW_1c((alphai, beta), exStruc, asm='bsoft')
+        Hugo_bsoft = sf.simHybrid_1c((alphai, beta), Daphne_bsoft, asm='bsoft')
+        Michelle_bsoft = sf.simMeta_1c(alphai, beta, alphai, Hugo_bsoft,
+                                      asm='bsoft')
+        Wilhelm_bsoft = sf.simWSLS(Michelle_bsoft)
+        Renee_bsoft = sf.simRandom(Wilhelm_bsoft)
+        Renee_bsoft.to_csv(BIAS_DIR / (title + f'_beta_{beta}_bsoftmax.csv'))
+        
+        # pf.selplot(Renee_bsoft, 'rw', plotnr, thetas=(alphai, beta), pp=simi)
         # plotnr += 1
 
 
