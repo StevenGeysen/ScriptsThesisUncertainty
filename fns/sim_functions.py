@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Simulation functions -- Version 3
-Last edit:  2022/08/24
+"""     Simulation functions -- Version 3.1
+Last edit:  2022/08/25
 Author(s):  Geysen, Steven (SG)
 Notes:      - Functions used for the simulation of the task used by
                 Marzecova et al. (2019). Both structure and models.
@@ -14,7 +14,7 @@ Notes:      - Functions used for the simulation of the task used by
                 * (negaitve) log likelihood
                 * Negative Spearman correlation
             - Release notes:
-                * Start Meta learner
+                * Fixed bug in sim_negSpearCor()
             
 To do:      - Meta learner
             
@@ -270,10 +270,12 @@ def simRW_1c(parameters, data, asm='soft'):
     selcue = np.nan
     
     # Parameters
-    alpha, beta = parameters[:2]
-    bias = 0
+    alpha = parameters[0]
+    beta, bias = 0, 0
+    if len(parameters) > 1:
+        beta = parameters[1]
     if len(parameters) > 2:
-        bias = parameters[-1]
+        bias = parameters[2]
 
     # Trial loop
     for triali, trial in data.iterrows():
@@ -379,10 +381,12 @@ def simHybrid_1c(parameters, data, salpha=0.01, asm='soft'):
     selcue = np.nan
     
     # Parameters
-    eta, beta = parameters[:2]
-    bias = 0
+    eta = parameters[0]
+    beta, bias = 0, 0
+    if len(parameters) > 1:
+        beta = parameters[1]
     if len(parameters) > 2:
-        bias = parameters[-1]
+        bias = parameters[2]
 
     # Trial loop
     for triali, trial in data.iterrows():
@@ -444,9 +448,9 @@ def simMeta_1c(parameters, data, asm='soft'):
     ----------
     parameters : tuple, list, array
         First parameter is the learning rate of the model (0 <= alpha <= 1).
-        Second parameter is the constant of the action selection method
+        Second parameter is the forgetting rate of the model (zeta).
+        Third parameter is the constant of the action selection method
             (0 < beta).
-        Third parameter is the forgetting rate of the model (zeta).
         Fourth parameter is the bias term of the biased SoftMax (bias). The
             default is 0.
     data : pandas.DataFrame
@@ -465,13 +469,17 @@ def simMeta_1c(parameters, data, asm='soft'):
             4. 'RPE_M' - reward prediction error
             5. 'Qest_0_M' - estimated value of cue 0
             6. 'Qest_1_M' - estimated value of cue 1
+            7. 'epsilon_0_M' - estimate of expected uncertainty of cue 0
+            8. 'epsilon_1_M' - estimate of expected uncertainty of cue 1
+            9. 'nu_M' - unexpected uncertainty
     """
     # Variables
     # ---------
     # Dataframe
     var_list = [
         'selCue_M', 'prob_M', 'rt_M', 'reward_M',
-        'RPE_M', 'Qest_0_M', 'Qest_1_M'
+        'RPE_M', 'Qest_0_M', 'Qest_1_M',
+        'epsilon_0_M', 'epsilon_1_M', 'nu_M'
         ]
     simDict = {vari:[] for vari in var_list}
     
@@ -483,17 +491,21 @@ def simMeta_1c(parameters, data, asm='soft'):
     ## Estimated value of cue
     Q_est = np.full((n_trials, N_CUES), 1/N_CUES)
     ## Estimate of expected uncertainty calculated from the history of URPEs
-    epsilon = 0.5
+    epsilon = np.full((n_trials, ), 1/N_CUES)
+    ## Unexpected uncertainty
+    nu = 0
     
     # Policy
     ## Selected cue
     selcue = np.nan
     
     # Parameters
-    alpha, beta, zeta = parameters[:3]
-    bias = 0
+    alpha, zeta = parameters[:2]
+    beta, bias = 0, 0
+    if len(parameters) > 2:
+        beta = parameters[2]
     if len(parameters) > 3:
-        bias = parameters[-1]
+        bias = parameters[3]
 
     # Trial loop
     for triali, trial in data.iterrows():
@@ -516,8 +528,8 @@ def simMeta_1c(parameters, data, asm='soft'):
         reward = int(selcue == trial.targetLoc)
         simDict['reward_M'].append(reward)
         
-        # Update rule (RW)
-        # ----------------
+        # Update rule
+        # -----------
         if triali == 0:
             # Reward prediction error
             rpe = reward - Q_est[triali, selcue]
@@ -527,6 +539,11 @@ def simMeta_1c(parameters, data, asm='soft'):
             # Cue estimates
             ## Repeat cue estimates of previous trial
             Q_est[triali, :] = Q_est[triali - 1, :]
+# =============================================================================
+#         NOT CORRECT YET
+#         nu = abs(rpe) - epsilon[triali - 1]
+#         epsilon[triali] = epsilon[triali - 1] * nu
+# =============================================================================
         ## Update cue estimate of selected stimulus in current trial
         Q_est[triali, selcue] = zeta * Q_est[triali, selcue] + alpha * rpe
         ## Forget not selected stimulus
@@ -600,10 +617,12 @@ def simRW_2c(parameters, data, asm='soft'):
     selcue = np.nan
     
     # Parameters
-    alpha, beta = parameters[:2]
-    bias = 0
+    alpha = parameters[0]
+    beta, bias = 0, 0
+    if len(parameters) > 1:
+        beta = parameters[1]
     if len(parameters) > 2:
-        bias = parameters[-1]
+        bias = parameters[2]
 
     # Trial loop
     for triali, trial in data.iterrows():
@@ -712,10 +731,12 @@ def simHybrid_2c(parameters, data, salpha=0.01, asm='soft'):
     selcue = np.nan
     
     # Parameters
-    eta, beta = parameters[:2]
-    bias = 0
+    eta = parameters[0]
+    beta, bias = 0, 0
+    if len(parameters) > 1:
+        beta = parameters[1]
     if len(parameters) > 2:
-        bias = parameters[-1]
+        bias = parameters[2]
 
     # Trial loop
     for triali, trial in data.iterrows():
@@ -925,7 +946,7 @@ def sim_negLL(thetas, data, model):
         # Model estimated value of model's selected stimulus
         ##SG: Likelihood of left stimulus if model picked left.
             # Otherwise 1-left for likelihood of right stimulus.
-        picked_prob = abs(trial[f'selCue_{model}'] - 
+        picked_prob = abs(trial[f'selCue_{model}'] -
                           trial[f'prob_{model}'])
         loglik_of_choice.append(np.log(picked_prob))
 
@@ -934,7 +955,7 @@ def sim_negLL(thetas, data, model):
     return np.nansum(loglik_of_choice)
 
 
-def sim_negSpearCor(thetas, data, model):
+def sim_negSpearCor(thetas, data, model, asm='soft'):
     """
     Negative Spearman correlation of learning model of reaction time and
     estimated value of selected cue
@@ -950,8 +971,9 @@ def sim_negSpearCor(thetas, data, model):
         Name of the used model:
             RW - Rescorla-Wagner
             H - RW-PH hybrid
-            W - Win-stay-lose-shift
-            R - Random
+            M - Meta learner
+    asm : string, optional
+        The action selection method, policy. The default is SoftMax.
 
     Returns
     -------
@@ -960,7 +982,7 @@ def sim_negSpearCor(thetas, data, model):
 
     model = model.upper()
     # Wilhelm and Renee do not simulate RTs.
-    assert not model in ['W', 'R'], 'Model has no simulated RT'
+    assert not model in ['W', 'R', 'M'], 'Model has no simulated RT'
 
     # Rename to avoid duplicates
     data = data.rename(columns={f'selCue_{model}': 'selCue',
@@ -969,7 +991,7 @@ def sim_negSpearCor(thetas, data, model):
                                 f'RPE_{model}': 'RPE'})
     # Simulate data
     modelDict = sim_models()
-    simData = modelDict[model](thetas, data)
+    simData = modelDict[model](parameters=thetas, data=data, asm=asm)
 
     # Correlation between RT and RPE
     return - stats.spearmanr(simData[f'rt_{model}'].to_numpy(),

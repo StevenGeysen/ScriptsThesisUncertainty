@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Model functions -- Version 4
-Last edit:  2022/08/24
+"""     Model functions -- Version 4.1
+Last edit:  2022/08/25
 Author(s):  Geysen, Steven (SG)
 Notes:      - Models for the ananlysis of behavioural data from
                 Marzecova et al. (2019)
@@ -13,8 +13,7 @@ Notes:      - Models for the ananlysis of behavioural data from
                     - Random (Renee)
                 * Negative Spearman correlation
             - Release notes:
-                * Start Meta learner
-                * Removed duplicate code
+                * Fixed bug in pp_negSpearCor()
 To do:      - Adjust models to behavioural data
             - Meta learner
             
@@ -22,10 +21,8 @@ Questions:
 Comments:   SG: Models return pandas.DataFrame. Model functions return
                 originale data with model selection appended.
             
-Sources:    https://www.frontiersin.org/articles/10.3389/fpsyg.2018.00612/full
-            https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.exponnorm.html
-            https://lindeloev.shinyapps.io/shiny-rt/
-            https://elifesciences.org/articles/49547
+Sources:    https://elifesciences.org/articles/49547
+            https://doi.org/10.1016/j.cub.2021.12.006
 """
 
 
@@ -127,10 +124,12 @@ def ppRW_1c(parameters, data, asm='soft'):
     selcue = np.nan
     
     # Parameters
-    alpha, beta = parameters[:2]
-    bias = 0
+    alpha = parameters[0]
+    beta, bias = 0, 0
+    if len(parameters) > 1:
+        beta = parameters[1]
     if len(parameters) > 2:
-        bias = parameters[-1]
+        bias = parameters[2]
 
     # Trial loop
     for triali, trial in data.iterrows():
@@ -234,10 +233,12 @@ def ppHybrid_1c(parameters, data, salpha=0.01, asm='soft'):
     selcue = np.nan
     
     # Parameters
-    eta, beta = parameters[:2]
-    bias = 0
+    eta = parameters[0]
+    beta, bias = 0, 0
+    if len(parameters) > 1:
+        beta = parameters[1]
     if len(parameters) > 2:
-        bias = parameters[-1]
+        bias = parameters[2]
 
     # Trial loop
     for triali, trial in data.iterrows():
@@ -297,9 +298,9 @@ def ppMeta_1c(parameters, data, asm='soft'):
     ----------
     parameters : tuple, list, array
         First parameter is the learning rate of the model (0 <= alpha <= 1).
-        Second parameter is the constant of the action selection method
+        Second parameter is the forgetting rate of the model (zeta).
+        Third parameter is the constant of the action selection method
             (0 < beta).
-        Third parameter is the forgetting rate of the model (zeta).
         Fourth parameter is the bias term of the biased SoftMax (bias). The
             default is 0.
     data : pandas.DataFrame
@@ -342,10 +343,12 @@ def ppMeta_1c(parameters, data, asm='soft'):
     selcue = np.nan
     
     # Parameters
-    alpha, beta, zeta = parameters[:3]
-    bias = 0
+    alpha, zeta = parameters[:2]
+    beta, bias = 0, 0
+    if len(parameters) > 2:
+        beta = parameters[2]
     if len(parameters) > 3:
-        bias = parameters[-1]
+        bias = parameters[3]
 
     # Trial loop
     for triali, trial in data.iterrows():
@@ -368,8 +371,8 @@ def ppMeta_1c(parameters, data, asm='soft'):
         reward = int(selcue == trial.targetLoc)
         ppDict['reward_M'].append(reward)
         
-        # Update rule (RW)
-        # ----------------
+        # Update rule
+        # -----------
         if triali == 0:
             # Reward prediction error
             rpe = reward - Q_est[triali, selcue]
@@ -450,10 +453,12 @@ def ppRW_2c(parameters, data, asm='soft'):
     selcue = np.nan
     
     # Parameters
-    alpha, beta = parameters[:2]
-    bias = 0
+    alpha = parameters[0]
+    beta, bias = 0, 0
+    if len(parameters) > 1:
+        beta = parameters[1]
     if len(parameters) > 2:
-        bias = parameters[-1]
+        bias = parameters[2]
 
     # Trial loop
     for triali, trial in data.iterrows():
@@ -560,10 +565,12 @@ def ppHybrid_2c(parameters, data, salpha=0.01, asm='soft'):
     selcue = np.nan
     
     # Parameters
-    eta, beta = parameters[:2]
-    bias = 0
+    eta = parameters[0]
+    beta, bias = 0, 0
+    if len(parameters) > 1:
+        beta = parameters[1]
     if len(parameters) > 2:
-        bias = parameters[-1]
+        bias = parameters[2]
 
     # Trial loop
     for triali, trial in data.iterrows():
@@ -731,7 +738,7 @@ def ppRandom(data):
 ####################
 
 
-def pp_negSpearCor(thetas, data, model):
+def pp_negSpearCor(thetas, data, model, asm='soft'):
     """
     Negative Spearman correlation of learning model of reaction time and
     estimated value of selected cue
@@ -767,7 +774,7 @@ def pp_negSpearCor(thetas, data, model):
                                 f'Qest_1_{model}': 'Qest_1',})
     # Simulate data
     modelDict = pp_models()
-    simData = modelDict[model](thetas, data)
+    simData = modelDict[model](parameters=thetas, data=data, asm=asm)
 
     # Correlation between RT and RPE
     return - stats.spearmanr(simData['RT'].to_numpy(),
