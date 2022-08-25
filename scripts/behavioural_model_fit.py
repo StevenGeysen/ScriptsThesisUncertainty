@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Behavioural model fit -- Version 1.7
-Last edit:  2022/08/24
+"""     Behavioural model fit -- Version 3
+Last edit:  2022/08/25
 Author(s):  Geysen, Steven (SG)
 Notes:      - Fit models to behavioural data of Marzecova et al. (2019)
             - Release notes:
-                * Fixed argmax gridsearch
+                * SoftMax
+                    - Grid search
+                    - Nelder-Mead
+                * Argmax
+                    - Grid search
+                    -Nelder-Mead
+                * Correlation plots
                 
 To do:      - Fit models
             - Statistics
@@ -52,6 +58,8 @@ Comments:   AM: The data file was merged in R, from the single files generated
             
 Sources:    https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.fmin.html
             https://docs.scipy.org/doc/scipy/reference/tutorial/optimize.html#nelder-mead-simplex-algorithm-method-nelder-mead
+            Remove NaN from array ( https://stackoverflow.com/a/11620982 )
+            https://theprogrammingexpert.com/python-remove-nan-from-list/
 """
 
 
@@ -113,10 +121,14 @@ alpha_options = np.linspace(0.01, 1, 40)
 beta_options = np.linspace(10, 20, 40)
 
 # Plot specs
+##SG: To have the smallest alpha and beta values in the same corner (left-down)
+plotbetas = np.flip(beta_options)
 ## Plot number
 plotnr = 0
 ## Plot labels
 plabels = ['Valid trials', 'Invalid trials']
+## Model labels
+models = af.labelDict()
 
 
 
@@ -309,9 +321,7 @@ print(stats.ttest_rel(first_bin, last_bin, nan_policy='omit'))
 #%% ~~ Grid search ~~ %%#
 
 
-# Smallest alpha and beta values left-below
-plotbetas = np.flip(beta_options)
-gridThetas = np.full((npp, 2), np.nan)
+gridThetas = np.full((npp, len(MDLS), 2), np.nan)
 
 start_total = time.time()
 for ppi in range(npp):
@@ -320,21 +330,20 @@ for ppi in range(npp):
         continue
     ## Use only data from pp
     pp_data = un_data[un_data['id'] == ppi + 1]
-    
-    one_totpp = np.zeros((len(alpha_options), len(beta_options)))
-    
+    one_totpp = np.zeros((len(alpha_options), len(beta_options), len(MDLS)))
     
     start_pp = time.time()
-    for loca, alphai in enumerate(alpha_options):
-        for locb, betai in enumerate(beta_options):
-            one_totpp[loca, locb] = bf.pp_negSpearCor((alphai, betai),
-                                                          pp_data,
-                                                          model='RW')
-    
-    # Optimal values
-    maxloc=[i[0] for i in np.where(one_totpp == np.min(one_totpp))]
-    gridThetas[ppi -1, :] = [alpha_options[maxloc[0]], beta_options[maxloc[1]]]
-    
+    for locm, modeli in enumerate(MDLS):
+        for loca, alphai in enumerate(alpha_options):
+            for locb, betai in enumerate(beta_options):
+                for iti in range(N_ITERS):
+                    one_totpp[loca, locb, locm] += bf.pp_negSpearCor(
+                        (alphai, betai), pp_data, model=modeli, asm='soft'
+                        )
+        modeldata = one_totpp[:, :, locm] / N_ITERS
+        # Optimal values
+        toploc=[i[0] for i in np.where(one_totpp == np.min(one_totpp))]
+        gridThetas[ppi, locm, :] = [alpha_options[toploc[0]], beta_options[toploc[1]]]
     print(f'Duration pp {ppi}: {round((time.time() - start_pp) / 60, 2)} minutes')
     
     if ppi % 2 == 0:
@@ -345,44 +354,45 @@ for ppi in range(npp):
                     row_name='$\u03B2$', col_name='$\u03B1$',
                     cbarlabel='Negative Spearman Correlation')
         
-        plt.suptitle(f'Grid search Negative Spearman Correlation of choice for participant {ppi}')
+        plt.suptitle(f'Grid search Negative Spearman Correlation of choice {ppi}')
         plt.show()
         plotnr += 1
         
         print(gridThetas[ppi - 1])
 print(f'Duration total: {round((time.time() - start_total) / 60, 2)} minutes')
 
+# Save optimal values
+##SG: Remove empty row of participant 6
+# gridThetas = np.delete(gridThetas, 5, 0)
+for locm, modeli in enumerate(MDLS):
+    title = f'pp_gridsearch_{N_ITERS}iters_softmax_{modeli}.csv'
+    pd.DataFrame(gridThetas[:, locm, :],
+                 columns=['alpha', 'beta']).to_csv(OUT_DIR / title)
+
+# Correlation plot
+fig, axs = plt.subplots(nrows=1, ncols=2)
+fig.suptitle('Parameter estimation Grid search')
+for pari, ax in enumerate(axs):
+    for locm, modeli in enumerate(MDLS):
+        ax.plot(gridThetas[:, locm, pari], 'o', label=f'{models[modeli]}')
+    ax.set_ylabel('Initial guess')
+
+axs[0].set_xlabel('Mean estimated alpha/eta values')
+axs[0].set_yticks(np.round(alpha_options, 3))
+axs[1].set_xlabel('Mean estimated beta values')
+axs[1].set_yticks(np.round(beta_options, 3))
+plt.legend()
+
+plt.show()
+plotnr += 1
+
 
 
 #%% ~~ Nelder - Mead ~~ %%#
 
 
-nmThetas = np.full((npp, 2), np.nan)
-
-for ppi in range(npp):
-    ## Skip pp6 (not in data)
-    if ppi + 1 == 6:
-        continue
-    ## Use only data from pp
-    pp_data = un_data[un_data['id'] == ppi + 1]
-    pp_data.reset_index(drop=True, inplace=True)
-    
-    initial_guess = (np.random.choice(alpha_options),
-                     np.random.choice(beta_options))
-    nmThetas[ppi, :] = optimize.fmin(bf.pp_negSpearCor, initial_guess,
-                                      args = (pp_data, 'RW'),
-                                      ftol = 0.001)
-    if ppi % 2 == 0:
-        print(initial_guess)
-        print(nmThetas[ppi])
-
-
-
-#%% ~~ Argmax ~~ %%#
-#------------------#
-
-
-gridThetas = np.full((npp, len(MDLS)), np.nan)
+initial_guess = np.full((npp, N_ITERS, 2), np.nan)
+nmThetas = np.full((npp, len(MDLS), 2), np.nan)
 
 start_total = time.time()
 for ppi in range(npp):
@@ -392,34 +402,51 @@ for ppi in range(npp):
     ## Use only data from pp
     pp_data = un_data[un_data['id'] == ppi + 1]
     pp_data.reset_index(drop=True, inplace=True)
-    one_pp = np.zeros((len(alpha_options), len(MDLS)))
     
     start_pp = time.time()
-    for locm, modeli in enumerate(MDLS):
-        for loca, alphai in enumerate(alpha_options):
-            for iti in range(N_ITERS):
-                one_pp[loca, locm] += bf.pp_negSpearCor((alphai, ), pp_data,
-                                                         model=modeli)
-        modeldata = one_pp[:, locm] / N_ITERS
-        # Optimal values
-        toploc = [i[0] for i in np.where(modeldata == np.min(modeldata))]
-        gridThetas[ppi, locm] = alpha_options[toploc[0]]
+    for iti in range(N_ITERS):
+        initial_guess[ppi, iti, :] = (np.random.choice(alpha_options),
+                                      np.random.choice(beta_options))
+        for locm, modeli in enumerate(MDLS):
+            nmThetas[ppi, locm, :] += optimize.fmin(
+                bf.pp_negSpearCor, initial_guess[ppi, iti, :],
+                args=(pp_data, modeli), ftol=0.001)
     print(f'Duration pp {ppi}: {round((time.time() - start_pp) / 60, 2)} minutes')
-    
-    if ppi % 2 == 0:
-        pf.heatmap_1d(modeli, modeldata, toploc, alpha_options,
-                      gridThetas[ppi])
-        plotnr += 1
-        print(gridThetas[ppi])
 print(f'Duration total: {round((time.time() - start_total) / 60, 2)} minutes')
 
+nmThetas /= N_ITERS
+# Save optimal values
+# nmThetas = np.delete(gridThetas, 5, 0)
+for locm, modeli in enumerate(MDLS):
+    title = f'pp_NelderMead_{N_ITERS}iters_softmax_{modeli}.csv'
+    pd.DataFrame(nmThetas[:, locm, :],
+                 columns=['alpha', 'beta']).to_csv(OUT_DIR / title)
 
-##SG: Paired t-test to see if the difference between the estimated model
-    # parameters is big.
-print(stats.ttest_rel(gridThetas[:, 0], gridThetas[:, 1], nan_policy='omit'))
+
+# Correlation plot
+fig, axs = plt.subplots(nrows=1, ncols=2)
+fig.suptitle('Parameter estimation Nelder-Mead')
+for pari, ax in enumerate(axs):
+    for locm, modeli in enumerate(MDLS):
+        ax.plot(nmThetas[:, locm, pari], 'o', label=f'{models[modeli]}')
+    ax.set_ylabel('Initial guess')
+
+axs[0].set_xlabel('Mean estimated alpha/eta values')
+axs[0].set_yticks(np.round(alpha_options, 3))
+axs[1].set_xlabel('Mean estimated beta values')
+axs[1].set_yticks(np.round(beta_options, 3))
+plt.legend()
+
+plt.show()
+plotnr += 1
 
 
-#%% test
+
+#%% ~~ Argmax ~~ %%#
+#------------------#
+
+
+##SG: +1 to store optimal values
 gridThetas = np.zeros((npp, len(MDLS), len(alpha_options) + 1))
 
 start_total = time.time()
@@ -442,15 +469,20 @@ for ppi in range(npp):
         # Optimal values
         toploc = [i[0] for i in np.where(modeldata == np.min(modeldata))]
         gridThetas[ppi, locm, -1] = alpha_options[toploc[0]]
+        
+        # Intermittent checking
+        if ppi % 2 == 0:
+            pf.heatmap_1d(modeli, modeldata, toploc, alpha_options,
+                          gridThetas[ppi, :, -1])
+            plotnr += 1
     print(f'Duration pp {ppi}: {round((time.time() - start_pp) / 60, 2)} minutes')
-    
-    if ppi % 2 == 0:
-        pf.heatmap_1d(modeli, modeldata, toploc, alpha_options,
-                      gridThetas[ppi, :, -1])
-        plotnr += 1
-        print(gridThetas[ppi])
+    print(gridThetas[ppi, :, -1])
 print(f'Duration total: {round((time.time() - start_total) / 60, 2)} minutes')
-
+# Save optimal values
+title = f'pp_gridsearch_{N_ITERS}iters_argmax.csv'
+##SG: Remove empty row of participant 6
+# gridThetas = np.delete(gridThetas, 5, 0)
+pd.DataFrame(gridThetas[:, :, -1], columns=MDLS).to_csv(OUT_DIR / title)
 
 ##SG: Paired t-test to see if the difference between the estimated model
     # parameters is big.
@@ -458,11 +490,28 @@ print(stats.ttest_rel(gridThetas[:, 0, -1], gridThetas[:, 1, -1],
                       nan_policy='omit'))
 
 
+# Correlation plot
+fig, ax = plt.subplots()
+fig.suptitle('Parameter estimation Grid search')
+for locm, modeli in enumerate(MDLS):
+    # Plot
+    ax.plot(gridThetas[:, locm], 'o', label=f'{models[modeli]}')
+
+ax.set_xlabel('Mean estimated values')
+ax.set_ylabel('Initial guess')
+ax.set_yticks(np.round(alpha_options, 3))
+plt.legend()
+
+plt.show()
+plotnr += 1
+
+
 
 #%% ~~ Nelder - Mead ~~ %%#
 
 
-nmThetas = np.zeros((npp, len(MDLS), len(alpha_options)))
+initial_guess = np.full((npp, N_ITERS), np.nan)
+nmThetas = np.zeros((npp, len(MDLS)))
 
 start_total = time.time()
 for ppi in range(npp):
@@ -472,21 +521,49 @@ for ppi in range(npp):
     ## Use only data from pp
     pp_data = un_data[un_data['id'] == ppi + 1]
     pp_data.reset_index(drop=True, inplace=True)
-    one_pp_nm = np.zeros((len(alpha_options), len(MDLS)))
     
-    for modeli in MDLS:
-        for iti in range(N_ITERS):
-            for loca, alphai in enumerate(alpha_options):
-                for iti in range(N_ITERS):
-                    nmThetas[ppi, :] += optimize.fmin(bf.pp_negSpearCor,
-                                                      (alphai, ),
-                                                      args = (pp_data, 'RW'),
-                                                      ftol = 0.001)
+    start_pp = time.time()
+    for iti in range(N_ITERS):
+        initial_guess[ppi, iti] = np.random.choice(alpha_options)
+        for locm, modeli in enumerate(MDLS):
+            nmThetas[ppi, locm] += optimize.fmin(bf.pp_negSpearCor,
+                                                  (initial_guess[ppi, iti], ),
+                                                  args=(pp_data, modeli, 'arg'),
+                                                  ftol=0.001)
     print(f'Duration pp {ppi}: {round((time.time() - start_pp) / 60, 2)} minutes')
     
     if ppi % 2 == 0:
         print(initial_guess)
         print(nmThetas[ppi])
+print(f'Duration total: {round((time.time() - start_total) / 60, 2)} minutes')
+
+nmThetas /= N_ITERS
+# Save optimal values
+title = f'pp_NelderMead_{N_ITERS}iters_argmax.csv'
+# nmThetas = np.delete(gridThetas, 5, 0)
+pd.DataFrame(nmThetas, columns=MDLS).to_csv(OUT_DIR / title)
+
+
+# Correlations
+yvals = np.array(list(set(initial_guess)))
+
+fig, ax = plt.subplots()
+fig.suptitle('Parameter estimation Nelder-Mead')
+for locm, modeli in enumerate(MDLS):
+    print(modeli)
+    print(stats.ttest_rel(nmThetas[:, locm], initial_guess,
+                          nan_policy='omit'))
+    # Plot
+    ax.plot(nmThetas[:, locm], 'o', label=f'{models[modeli]}')
+
+ax.set_xlabel('Mean estimated values')
+ax.set_ylabel('Initial guess')
+ax.set_yticks(np.round(yvals, 3))
+plt.legend()
+
+plt.show()
+plotnr += 1
+
 
 
 # ------------------------------------------------------------------------ End

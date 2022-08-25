@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """     Analysis simulations: Alpha recovery -- Version 2.2.1
-Last edit:  2022/08/23
+Last edit:  2022/08/25
 Author(s):  Geysen, Steven (SG)
 Notes:      - Analysis of the task used by Marzecova et al. (2019), simulated
                 with argmax policy
@@ -59,7 +59,7 @@ N_ITERS = 10
 # Models with optimiseable parameters
 MDLS = ['RW', 'H']
 # Number of trials in bin
-binsize = 10
+binsize = 15
 
 # Alpha/eta options
 alpha_options = np.linspace(0.01, 1, 40)
@@ -200,29 +200,48 @@ for simi, filei in enumerate(simList):
             for iti in range(N_ITERS):
                 # one_sim[loca, locm] += sf.sim_negLL((alphai, ), simData, model='RW')
                 one_sim[loca, locm] += sf.sim_negSpearCor((alphai, ), simData,
-                                                     model=modeli)
+                                                     model=modeli, asm='arg')
         modeldata = one_sim[:, locm] / N_ITERS
         # Optimal values
         toploc = [i[0] for i in np.where(modeldata == np.min(modeldata))]
         gridThetas[simi, locm] = alpha_options[toploc[0]]
+        # Intermittent checking
+        if simi % 2 == 0:
+            pf.heatmap_1d(modeli, modeldata, toploc, alpha_options,
+                          gridThetas[simi])
+            plotnr += 1
     print(f'Duration sim {simi}: {round((time.time() - start_sim) / 60, 2)} minutes')
-    
-    if simi % 2 == 0:
-        pf.heatmap_1d(modeli, modeldata, toploc, alpha_options, plotnr,
-                      gridThetas[simi])
-        plotnr += 1
-        
-        print(originalThetas[simi])
-        print(gridThetas[simi])
+    print(originalThetas[simi])
+    print(gridThetas[simi])
 print(f'Duration total: {round((time.time() - start_total) / 60, 2)} minutes')
 
+# Save optimal values
+title = f'sim_gridsearch_{N_ITERS}iters_argmax.csv'
+pd.DataFrame(gridThetas, columns=MDLS).to_csv(OUT_DIR / title)
 
-##SG: Paired t-test to see if the difference between originalThetas and
-    # gridThetas is too big.
-## Alphas
-print(stats.ttest_rel(originalThetas[:, 0], gridThetas[:, 0]))
-## Etas
-print(stats.ttest_rel(originalThetas[:, 0], gridThetas[:, 1]))
+
+
+#%% ~~ Correlations ~~ %%#
+
+
+fig, ax = plt.subplots()
+fig.suptitle('Parameter recovery Grid search')
+for locm, modeli in enumerate(MDLS):
+    print(modeli)
+    ##SG: Paired t-test to see if the difference between originalThetas and
+        # gridThetas is too big.
+    print(stats.ttest_rel(originalThetas[:, 0], gridThetas[:, locm],
+                          nan_policy='omit'))
+    
+    # Plot
+    ax.plot(originalThetas[:, 0], gridThetas[:, locm], 'o',
+            label=f'{models[modeli]}')
+ax.set_xlabel('True values')
+ax.set_ylabel('Recovered values')
+plt.legend()
+
+plt.show()
+plotnr += 1
 
 
 
@@ -230,18 +249,49 @@ print(stats.ttest_rel(originalThetas[:, 0], gridThetas[:, 1]))
 #-------------------------#
 
 
-nmThetas = np.full((len(simList), 1), np.nan)
+initial_guess = np.full((len(simList), N_ITERS), np.nan)
+nmThetas = np.zeros((len(simList), len(MDLS)))
 
 for simi, filei in enumerate(simList):
     simData = pd.read_csv(SIM_DIR / filei, index_col='Unnamed: 0')
-    initial_guess = np.random.choice(alpha_options)
-    nmThetas[simi] = optimize.fmin(sf.sim_negSpearCor, initial_guess,
-                                   args = (simData, 'RW'),
-                                   ftol = 0.001)
+    for iti in range(N_ITERS):
+        initial_guess[simi, iti] = np.random.choice(alpha_options)
+        for locm, modeli in enumerate(MDLS):
+            nmThetas[simi, locm] += optimize.fmin(sf.sim_negSpearCor,
+                                                  (initial_guess[simi, iti], ),
+                                                  args=(simData, modeli, 'arg'),
+                                                  ftol=0.001)
     if simi % 2 == 0:
         print(originalThetas[simi])
-        print(initial_guess)
+        print(initial_guess[simi, iti])
         print(nmThetas[simi])
+
+nmThetas /= N_ITERS
+# Save optimal values
+title = f'sim_NelderMead_{N_ITERS}iters_argmax.csv'
+pd.DataFrame(nmThetas, columns=MDLS).to_csv(OUT_DIR / title)
+
+
+
+#%% ~~ Correlations ~~ %%#
+yvals = np.array(list(set(initial_guess)))
+
+fig, ax = plt.subplots()
+fig.suptitle('Parameter recovery Nelder-Mead')
+for locm, modeli in enumerate(MDLS):
+    print(modeli)
+    print(stats.ttest_rel(nmThetas[:, locm], initial_guess,
+                          nan_policy='omit'))
+    # Plot
+    ax.plot(nmThetas[:, locm], 'o', label=f'{models[modeli]}')
+
+ax.set_xlabel('Mean recovered values')
+ax.set_ylabel('Initial guess')
+ax.set_yticks(np.round(yvals, 3))
+plt.legend()
+
+plt.show()
+plotnr += 1
 
 
 
