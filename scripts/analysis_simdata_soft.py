@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Analysis simulations: Softmax -- Version 4
-Last edit:  2022/08/25
+"""     Analysis simulations: Softmax -- Version 4.1
+Last edit:  2022/08/27
 Author(s):  Geysen, Steven (SG)
 Notes:      - Analysis of simulated data of the task used by
                 Marzecova et al. (2019)
             - Release notes:
-                * SoftMax
-                    - Grid search
-                    - Nelder-Mead
-                * Correlation plots
+                * Smaller parameter range
                 
 To do:      - Nelder-Mead
             - Explore models
@@ -65,9 +62,9 @@ MDLS = ['RW', 'H']
 binsize = 15
 
 # Alpha/eta options
-alpha_options = np.linspace(0.01, 1, 40)
+alpha_options = np.linspace(0.01, 1, 20)
 # Beta options
-beta_options = np.linspace(0.1, 20, 40)
+beta_options = np.linspace(0.1, 20, 20)
 
 # Plot specs
 ##SG: To have the smallest alpha and beta values in the same corner (left-down)

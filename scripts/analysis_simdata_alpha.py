@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Analysis simulations: Alpha recovery -- Version 2.2.1
-Last edit:  2022/08/25
+"""     Analysis simulations: Alpha recovery -- Version 3.1
+Last edit:  2022/08/27
 Author(s):  Geysen, Steven (SG)
 Notes:      - Analysis of the task used by Marzecova et al. (2019), simulated
                 with argmax policy
             - Release notes:
-                * Binned PE
+                * Argmax
+                    - Grid search
+                    -Nelder-Mead
+                * Correlation plots
+                * Smaller parameter range
                 
 To do:      - Nelder-Mead
             - Explore models
@@ -62,7 +66,7 @@ MDLS = ['RW', 'H']
 binsize = 15
 
 # Alpha/eta options
-alpha_options = np.linspace(0.01, 1, 40)
+alpha_options = np.linspace(0.01, 1, 20)
 
 # Plot specs
 ## Plot number

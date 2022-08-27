@@ -1,17 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Behavioural model fit -- Version 3
-Last edit:  2022/08/25
+"""     Behavioural model fit -- Version 3.1
+Last edit:  2022/08/27
 Author(s):  Geysen, Steven (SG)
 Notes:      - Fit models to behavioural data of Marzecova et al. (2019)
             - Release notes:
-                * SoftMax
-                    - Grid search
-                    - Nelder-Mead
-                * Argmax
-                    - Grid search
-                    -Nelder-Mead
-                * Correlation plots
+                * Smaller parameter range
                 
 To do:      - Fit models
             - Statistics
@@ -113,12 +107,12 @@ npp = un_data['id'].max()
 binsize = 15
 
 # Alpha/eta options
-alpha_options = np.linspace(0.01, 1, 40)
+alpha_options = np.linspace(0.01, 1, 20)
 # Beta options
 ##SG: The SoftMax policy needs a high beta value for the model to be accurate
     # (see simulations). Therefore it is not usefull to look at beta values
     # smaller than 10.
-beta_options = np.linspace(10, 20, 40)
+beta_options = np.linspace(10, 20, 20)
 
 # Plot specs
 ##SG: To have the smallest alpha and beta values in the same corner (left-down)
@@ -330,6 +324,7 @@ for ppi in range(npp):
         continue
     ## Use only data from pp
     pp_data = un_data[un_data['id'] == ppi + 1]
+    pp_data.reset_index(drop=True, inplace=True)
     one_totpp = np.zeros((len(alpha_options), len(beta_options), len(MDLS)))
     
     start_pp = time.time()
@@ -344,21 +339,20 @@ for ppi in range(npp):
         # Optimal values
         toploc=[i[0] for i in np.where(one_totpp == np.min(one_totpp))]
         gridThetas[ppi, locm, :] = [alpha_options[toploc[0]], beta_options[toploc[1]]]
+        
+        # Intermittent checking
+        if ppi % 2 == 0:
+            plt.figure(plotnr)
+            fig, ax = plt.subplots()
+            im, _ = pf.heatmap(np.rot90(one_totpp[:, :, locm]),
+                               np.round(plotbetas, 3),
+                               np.round(alpha_options, 3), ax=ax,
+                               row_name='$\u03B2$', col_name='$\u03B1$',
+                               cbarlabel='Negative Spearman Correlation')
+            plt.suptitle(f'Grid search Negative Spearman Correlation of choice {ppi}')
+            plt.show()
+            plotnr += 1
     print(f'Duration pp {ppi}: {round((time.time() - start_pp) / 60, 2)} minutes')
-    
-    if ppi % 2 == 0:
-        plt.figure(plotnr)
-        fig, ax = plt.subplots()
-        im, _ = pf.heatmap(np.rot90(one_totpp), np.round(plotbetas, 3),
-                    np.round(alpha_options, 3), ax=ax,
-                    row_name='$\u03B2$', col_name='$\u03B1$',
-                    cbarlabel='Negative Spearman Correlation')
-        
-        plt.suptitle(f'Grid search Negative Spearman Correlation of choice {ppi}')
-        plt.show()
-        plotnr += 1
-        
-        print(gridThetas[ppi - 1])
 print(f'Duration total: {round((time.time() - start_total) / 60, 2)} minutes')
 
 # Save optimal values
