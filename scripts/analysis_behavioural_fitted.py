@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Analysis behavioural fitted -- Version 1
+"""     Analysis behavioural fitted -- Version 2
 Last edit:  2022/09/01
 Author(s):  Geysen, Steven (SG)
 Notes:      - Analysis of behavioural data after model fitting
             - Release notes:
-                * Initial commit
-                * Bin relevant data
+                * Plot before-after switch (as in Grossman et al., 2022)
                 
 To do:      - Plots expected uncertainty
                 * Low-medium-high (Marzecova et al., 2019)
-                * Before-after switch (Grossman et al., 2022)
             - Model comparison
                 * LME
             - Clean bin-spaghetti
@@ -268,11 +266,11 @@ for ppi in range(npp):
 
 
 # List of arrays to matrix
-##
+##SG: Works only if input arrays have the same shape (not always the case with
+    # leftover and last15).
 for bini in [post15, middle15, pre15]:
     for vali in relVal:
         bini[vali] = np.stack(bini[vali], axis=0)
-
 
 
 
@@ -280,10 +278,32 @@ for bini in [post15, middle15, pre15]:
 #-----------------#
 
 
+fig, axs = plt.subplots(nrows=2, ncols=2)
+for vali, ploti in zip(relVal, np.ravel(axs)):
+    # Mean values
+    meanplot = np.ravel(np.stack([np.nanmean(pre15[vali], axis=0),
+                                  np.nanmean(post15[vali], axis=0)], axis=0))
+    # Standard deviation
+    standivs = np.ravel(np.stack([np.nanstd(pre15[vali], axis=0),
+                                  np.nanstd(post15[vali], axis=0)], axis=0))
+    topsd = np.add(meanplot, standivs)
+    minsd = np.subtract(meanplot, standivs)
+    
+    ## Length of switch bar depends on values
+    barlen = (np.nanmin(minsd) - (np.nanmin(minsd) * 0.1),
+              np.nanmax(topsd) + (np.nanmax(topsd) * 0.1))
+    ploti.vlines(15, barlen[0], barlen[1], colors='black')
+    
+    ploti.plot(meanplot)
+    ploti.fill_between(np.linspace(0,29,30), topsd, minsd, alpha=0.2)
+    
+    ploti.set_xticks(np.linspace(0, 30, 5),
+                  labels=[-15, 'before', 'switch', 'after', 15])
+    ploti.set_xlabel('trials')
+    ploti.set_ylabel(vali)
 
-
-
-
+plt.show()
+plotnr += 1
 
 
 # ------------------------------------------------------------------------ End
