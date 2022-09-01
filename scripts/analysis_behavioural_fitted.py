@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Analysis behavioural fitted -- Version 2
+"""     Analysis behavioural fitted -- Version 2.1
 Last edit:  2022/09/01
 Author(s):  Geysen, Steven (SG)
 Notes:      - Analysis of behavioural data after model fitting
             - Release notes:
-                * Plot before-after switch (as in Grossman et al., 2022)
+                * Cleaned bin-spaghetti
                 
 To do:      - Plots expected uncertainty
                 * Low-medium-high (Marzecova et al., 2019)
+            - Grossman et al. (2022) plot split for first and second half
             - Model comparison
                 * LME
             - Clean bin-spaghetti
@@ -163,19 +164,17 @@ complete_data = pd.concat(dataList, ignore_index=True)
 
 
 # Trial bins
-relVal = ['RT', 'RPE_RW', 'RPE_H', 'alpha_H']
+relVar = ['RT', 'RPE_RW', 'RPE_H', 'alpha_H']
 ##SG: First 15 trials after switch.
-post15 = {vali:[] for vali in relVal}
+post15 = {vari:[] for vari in relVar}
 ##SG: Trials 15 to 30.
-middle15 = {vali:[] for vali in relVal}
+middle15 = {vari:[] for vari in relVar}
 ##SG: All trials except for first 30.
-leftover = {vali:[] for vali in relVal}
+leftover = {vari:[] for vari in relVar}
 ##SG: Last 15 trials, less if there were less then 45 trials between switches.
-last15 = {vali:[] for vali in relVal}
+last15 = {vari:[] for vari in relVar}
 ##SG: The 15 trials before switch.
-pre15 = {vali:[] for vali in relVal}
-
-binlist = [post15, middle15, leftover, last15, pre15]
+pre15 = {vari:[] for vari in relVar}
 
 
 for ppi in range(npp):
@@ -186,91 +185,46 @@ for ppi in range(npp):
     pp_data = complete_data[complete_data['id'] == ppi + 1]
     pp_data.reset_index(drop=True, inplace=True)
     
-    # Add information from 30 first trials
-    for loci, bini in enumerate(binlist[:2]):
-        bindata = pp_data.loc[(loci * NBIN):(loci * NBIN + NBIN - 1)]
-        for vali in relVal:
-            bini[vali].append(bindata[vali].to_numpy())
-    
     # Switch points
     lag_relCueCol = pp_data.relCueCol.eq(pp_data.relCueCol.shift())
-    switch_points = np.where(lag_relCueCol == False)[0][1:]
-    
-    # Add information of first last 15 trials
-    startover = switch_points[0] - 30
-    for vali in relVal:
-        leftover[vali].append(
-            pp_data.loc[(2 * NBIN):(switch_points[0] - 1)][vali].to_numpy()
-            )
-        pre15[vali].append(
-            pp_data.loc[(switch_points[0] - NBIN):(switch_points[0] - 1)][vali].to_numpy()
-            )
-        ##SG: Last 15 trials or less if there were less than 45 trials
-            # between start and first switch.
-        if startover >= 15:
-            last15[vali].append(
-                pp_data.loc[(switch_points[0] - NBIN):(switch_points[0] - 1)][vali].to_numpy()
-                )
-        else:
-            last15[vali].append(
-                pp_data.loc[(switch_points[0] - startover):(switch_points[0] - 1)][vali].to_numpy()
-                )
+    switch_points = np.where(lag_relCueCol == False)[0]
+    switch_points = np.append(switch_points, 640)
     
     # Add information of middle part
     for starti, endi in af.pairwise(switch_points):
         print(starti, endi)
         nover = endi - starti - 30
-        for vali in relVal:
-            post15[vali].append(
-                pp_data.loc[starti:(starti + NBIN - 1)][vali].to_numpy()
+        for vari in relVar:
+            post15[vari].append(
+                pp_data.loc[starti:(starti + NBIN - 1)][vari].to_numpy()
                 )
-            middle15[vali].append(
-                pp_data.loc[(starti + NBIN):(starti + 2 * NBIN - 1)][vali].to_numpy()
+            middle15[vari].append(
+                pp_data.loc[(starti + NBIN):(starti + 2 * NBIN - 1)][vari].to_numpy()
                 )
-            leftover[vali].append(
-                pp_data.loc[(starti + 2 * NBIN):(endi - 1)][vali].to_numpy()
+            leftover[vari].append(
+                pp_data.loc[(starti + 2 * NBIN):(endi - 1)][vari].to_numpy()
                 )
-            pre15[vali].append(
-                pp_data.loc[(endi - NBIN):(endi - 1)][vali].to_numpy()
+            pre15[vari].append(
+                pp_data.loc[(endi - NBIN):(endi - 1)][vari].to_numpy()
                 )
             ##SG: Last 15 trials or less if there were less than 45 trials
                 # between switches.
             if nover >= 15:
-                last15[vali].append(
-                    pp_data.loc[(endi - NBIN):(endi - 1)][vali].to_numpy()
+                last15[vari].append(
+                    pp_data.loc[(endi - NBIN):(endi - 1)][vari].to_numpy()
                     )
             else:
-                last15[vali].append(
-                    pp_data.loc[(endi - nover):(endi - 1)][vali].to_numpy()
+                last15[vari].append(
+                    pp_data.loc[(endi - nover):(endi - 1)][vari].to_numpy()
                     )
-    
-    # Add information of last 15 trials
-    endover = len(pp_data) - endi
-    for vali in relVal:
-        post15[vali].append(
-            pp_data.loc[endi:(endi + NBIN - 1)][vali].to_numpy()
-            )
-        middle15[vali].append(
-            pp_data.loc[(endi + NBIN):(endi + 2 * NBIN - 1)][vali].to_numpy()
-            )
-        leftover[vali].append(
-            pp_data.loc[(endi + 2 * NBIN):][vali].to_numpy()
-            )
-        pre15[vali].append(pp_data.tail(NBIN)[vali].to_numpy())
-        ##SG: Last 15 trials or less if there were less than 45 trials
-            # between last switch and end.
-        if endover >= 15:
-            last15[vali].append(pp_data.tail(NBIN)[vali].to_numpy())
-        else:
-            last15[vali].append(pp_data.tail(endover)[vali].to_numpy())
 
 
 # List of arrays to matrix
 ##SG: Works only if input arrays have the same shape (not always the case with
     # leftover and last15).
 for bini in [post15, middle15, pre15]:
-    for vali in relVal:
-        bini[vali] = np.stack(bini[vali], axis=0)
+    for vari in relVar:
+        bini[vari] = np.stack(bini[vari], axis=0)
 
 
 
@@ -279,13 +233,13 @@ for bini in [post15, middle15, pre15]:
 
 
 fig, axs = plt.subplots(nrows=2, ncols=2)
-for vali, ploti in zip(relVal, np.ravel(axs)):
+for vari, ploti in zip(relVar, np.ravel(axs)):
     # Mean values
-    meanplot = np.ravel(np.stack([np.nanmean(pre15[vali], axis=0),
-                                  np.nanmean(post15[vali], axis=0)], axis=0))
+    meanplot = np.ravel(np.stack([np.nanmean(pre15[vari], axis=0),
+                                  np.nanmean(post15[vari], axis=0)], axis=0))
     # Standard deviation
-    standivs = np.ravel(np.stack([np.nanstd(pre15[vali], axis=0),
-                                  np.nanstd(post15[vali], axis=0)], axis=0))
+    standivs = np.ravel(np.stack([np.nanstd(pre15[vari], axis=0),
+                                  np.nanstd(post15[vari], axis=0)], axis=0))
     topsd = np.add(meanplot, standivs)
     minsd = np.subtract(meanplot, standivs)
     
@@ -300,10 +254,11 @@ for vali, ploti in zip(relVal, np.ravel(axs)):
     ploti.set_xticks(np.linspace(0, 30, 5),
                   labels=[-15, 'before', 'switch', 'after', 15])
     ploti.set_xlabel('trials')
-    ploti.set_ylabel(vali)
+    ploti.set_ylabel(vari)
 
 plt.show()
 plotnr += 1
+
 
 
 # ------------------------------------------------------------------------ End
