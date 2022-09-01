@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """     Analysis simulations: Softmax -- Version 4.1
-Last edit:  2022/08/27
+Last edit:  2022/09/01
 Author(s):  Geysen, Steven (SG)
 Notes:      - Analysis of simulated data of the task used by
                 Marzecova et al. (2019)
@@ -228,7 +228,6 @@ for simi, filei in enumerate(simList):
     
     # Intermittent checking
     if simi % 2 == 0:
-        plt.figure(plotnr)
         fig, ax = plt.subplots()
         im, _ = pf.heatmap(np.rot90(one_sim), np.round(plotbetas, 3),
                     np.round(alpha_options, 3), ax=ax,
@@ -259,24 +258,6 @@ for locm, modeli in enumerate(MDLS):
     print('Beta', stats.ttest_rel(originalThetas[:, 1],
                                   gridThetas[:, locm, 1],
                                   nan_policy='omit'))
-
-
-# Correlation plot
-fig, axs = plt.subplots(nrows=1, ncols=2)
-fig.suptitle('Parameter recovery Grid search')
-for pari, ax in enumerate(axs):
-    yvals = list(set(originalThetas[:, pari]))
-    for locm, modeli in enumerate(MDLS):
-        ax.plot(gridThetas[:, locm, pari], 'o', label=f'{models[modeli]}')
-    ax.set_ylabel('True values')
-    ax.set_yticks(round(yvals, 3))
-
-axs[0].set_xlabel('Mean recovered alpha/eta values')
-axs[1].set_xlabel('Mean recovered beta values')
-plt.legend()
-
-plt.show()
-plotnr += 1
 
 
 

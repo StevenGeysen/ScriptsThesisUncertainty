@@ -1,19 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Analysis simulations: Alpha recovery -- Version 3.1
-Last edit:  2022/08/27
+"""     Analysis simulations: Alpha recovery -- Version 3.1.1
+Last edit:  2022/09/01
 Author(s):  Geysen, Steven (SG)
 Notes:      - Analysis of the task used by Marzecova et al. (2019), simulated
                 with argmax policy
             - Release notes:
-                * Argmax
-                    - Grid search
-                    -Nelder-Mead
-                * Correlation plots
-                * Smaller parameter range
+                * Bug fixes
                 
-To do:      - Nelder-Mead
-            - Explore models
+To do:      - Explore models
             - Performance plots (box 2 - figure 1.A)
 Questions:  
             
@@ -225,30 +220,6 @@ pd.DataFrame(gridThetas, columns=MDLS).to_csv(OUT_DIR / title)
 
 
 
-#%% ~~ Correlations ~~ %%#
-
-
-fig, ax = plt.subplots()
-fig.suptitle('Parameter recovery Grid search')
-for locm, modeli in enumerate(MDLS):
-    print(modeli)
-    ##SG: Paired t-test to see if the difference between originalThetas and
-        # gridThetas is too big.
-    print(stats.ttest_rel(originalThetas[:, 0], gridThetas[:, locm],
-                          nan_policy='omit'))
-    
-    # Plot
-    ax.plot(originalThetas[:, 0], gridThetas[:, locm], 'o',
-            label=f'{models[modeli]}')
-ax.set_xlabel('True values')
-ax.set_ylabel('Recovered values')
-plt.legend()
-
-plt.show()
-plotnr += 1
-
-
-
 #%% ~~ Nelder - Mead ~~ %%#
 #-------------------------#
 
@@ -256,8 +227,11 @@ plotnr += 1
 initial_guess = np.full((len(simList), N_ITERS), np.nan)
 nmThetas = np.zeros((len(simList), len(MDLS)))
 
+start_total = time.time()
 for simi, filei in enumerate(simList):
     simData = pd.read_csv(SIM_DIR / filei, index_col='Unnamed: 0')
+    
+    start_sim = time.time()
     for iti in range(N_ITERS):
         initial_guess[simi, iti] = np.random.choice(alpha_options)
         for locm, modeli in enumerate(MDLS):
@@ -268,7 +242,9 @@ for simi, filei in enumerate(simList):
     if simi % 2 == 0:
         print(originalThetas[simi])
         print(initial_guess[simi, iti])
-        print(nmThetas[simi])
+        print(nmThetas[simi, :])
+    print(f'Duration sim {simi}: {round((time.time() - start_sim) / 60, 2)} minutes')
+print(f'Duration total: {round((time.time() - start_total) / 60, 2)} minutes')
 
 nmThetas /= N_ITERS
 # Save optimal values
@@ -278,14 +254,14 @@ pd.DataFrame(nmThetas, columns=MDLS).to_csv(OUT_DIR / title)
 
 
 #%% ~~ Correlations ~~ %%#
-yvals = np.array(list(set(initial_guess)))
+yvals = np.array(list(set(initial_guess.flatten())))
 
 fig, ax = plt.subplots()
 fig.suptitle('Parameter recovery Nelder-Mead')
 for locm, modeli in enumerate(MDLS):
     print(modeli)
-    print(stats.ttest_rel(nmThetas[:, locm], initial_guess,
-                          nan_policy='omit'))
+    # print(stats.ttest_rel(nmThetas[:, locm], initial_guess,
+    #                       nan_policy='omit'))
     # Plot
     ax.plot(nmThetas[:, locm], 'o', label=f'{models[modeli]}')
 
