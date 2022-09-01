@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Assisting functions -- Version 2
-Last edit:  2022/07/24
+"""     Assisting functions -- Version 2.1
+Last edit:  2022/09/01
 Author(s):  Geysen, Steven (SG)
 Notes:      - Assisting functions to reduce repetition
                 * labelDict
@@ -79,19 +79,12 @@ def policy(asm, Qest, beta=-1, bias=0):
         probcue = 1
     
     # SoftMax
-    elif asm[-4:] == 'SOFT':
+    elif asm == 'SOFT':
         ## Need beta value if SoftMax is used
         assert beta > 0, 'Missing beta value'
         
         ## Probability of cue 0
-        if len(asm) == 4:
-            probcue = np.exp(beta * Qest[0]) / \
-                np.sum(np.exp(np.multiply(beta, Qest)))
-        
-        # Biased SoftMax
-        elif len(asm) == 5:
-            probcue = 1 / (1 + np.exp(-beta  * (Qest[0] - Qest[1] + bias)))
-        
+        probcue = 1 / (1 + np.exp(-beta  * (Qest[0] - Qest[1] + bias)))
         ##SG: If the probability of cue 0 is smaller than a random value,
             # follow cue 1.
         temp = np.random.rand() <= probcue
