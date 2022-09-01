@@ -172,7 +172,7 @@ dataList = [complete_data, low_data, high_data]
 labeList = ['All data', 'Low UUn', 'High UUn']
 
 for datai, labeli in zip(dataList, labeList):
-    post15, middle15, leftover, last15, pre15 = af.uncertainty_bin(
+    post15, middle15, leftover, last15, pre15 = af.bin_switch(
         datai, relVar
         )
     
