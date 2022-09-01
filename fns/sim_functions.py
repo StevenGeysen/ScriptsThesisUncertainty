@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Simulation functions -- Version 3.1
-Last edit:  2022/08/25
+"""     Simulation functions -- Version 3.2
+Last edit:  2022/09/01
 Author(s):  Geysen, Steven (SG)
 Notes:      - Functions used for the simulation of the task used by
                 Marzecova et al. (2019). Both structure and models.
@@ -15,6 +15,7 @@ Notes:      - Functions used for the simulation of the task used by
                 * Negative Spearman correlation
             - Release notes:
                 * Fixed bug in sim_negSpearCor()
+                * Worked on Michelle
             
 To do:      - Meta learner
             
@@ -451,8 +452,9 @@ def simMeta_1c(parameters, data, asm='soft'):
         Second parameter is the forgetting rate of the model (zeta).
         Third parameter is the constant of the action selection method
             (0 < beta).
-        Fourth parameter is the bias term of the biased SoftMax (bias). The
-            default is 0.
+        Fourth parameter is the bias term of the biased SoftMax
+            (-1 (cue_0 bias) <= bias <= 1 (cue_1 bias)). It indicates a prefere
+            for one cue over the other. The default is 0 (no bias).
     data : pandas.DataFrame
         Dataframe containing the structure of the experiment.
     asm : string, optional
@@ -469,9 +471,9 @@ def simMeta_1c(parameters, data, asm='soft'):
             4. 'RPE_M' - reward prediction error
             5. 'Qest_0_M' - estimated value of cue 0
             6. 'Qest_1_M' - estimated value of cue 1
-            7. 'epsilon_0_M' - estimate of expected uncertainty of cue 0
-            8. 'epsilon_1_M' - estimate of expected uncertainty of cue 1
-            9. 'nu_M' - unexpected uncertainty
+            7. 'eun_0_M' - estimate of expected uncertainty of cue 0
+            8. 'eun_1_M' - estimate of expected uncertainty of cue 1
+            9. 'uun_M' - unexpected uncertainty
     """
     # Variables
     # ---------
@@ -479,7 +481,7 @@ def simMeta_1c(parameters, data, asm='soft'):
     var_list = [
         'selCue_M', 'prob_M', 'rt_M', 'reward_M',
         'RPE_M', 'Qest_0_M', 'Qest_1_M',
-        'epsilon_0_M', 'epsilon_1_M', 'nu_M'
+        'eun_0_M', 'eun_1_M', 'uun_M'
         ]
     simDict = {vari:[] for vari in var_list}
     
@@ -491,9 +493,9 @@ def simMeta_1c(parameters, data, asm='soft'):
     ## Estimated value of cue
     Q_est = np.full((n_trials, N_CUES), 1/N_CUES)
     ## Estimate of expected uncertainty calculated from the history of URPEs
-    epsilon = np.full((n_trials, ), 1/N_CUES)
+    eun = np.full((n_trials, ), 1/N_CUES)
     ## Unexpected uncertainty
-    nu = 0
+    uun = 0
     
     # Policy
     ## Selected cue
@@ -537,15 +539,15 @@ def simMeta_1c(parameters, data, asm='soft'):
             # Reward prediction error
             rpe = reward - Q_est[triali - 1, selcue]
             # Cue estimates
-            ## Repeat cue estimates of previous trial
+            ## Repeat values of previous trial
             Q_est[triali, :] = Q_est[triali - 1, :]
-# =============================================================================
-#         NOT CORRECT YET
-#         nu = abs(rpe) - epsilon[triali - 1]
-#         epsilon[triali] = epsilon[triali - 1] * nu
-# =============================================================================
+            eun[trial] = eun[trial - 1]
+        ## Update expected and unexpected uncertainty
+        uun = abs(rpe) - eun[triali]
+        eun[triali] *= uun
         ## Update cue estimate of selected stimulus in current trial
-        Q_est[triali, selcue] = zeta * Q_est[triali, selcue] + alpha * rpe
+        Q_est[triali, selcue] = Q_est[triali, selcue] + \
+            alpha * rpe * (1 - eun[triali])
         ## Forget not selected stimulus
         Q_est[triali, abs(1 - selcue)] = zeta * Q_est[triali, abs(1 - selcue)]
         simDict['RPE_M'].append(rpe)
