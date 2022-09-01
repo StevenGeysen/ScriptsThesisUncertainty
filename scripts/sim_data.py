@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Simulate data -- Version 2
-Last edit:  2022/08/24
+"""     Simulate data -- Version 2.1
+Last edit:  2022/09/01
 Author(s):  Geysen, Steven (SG)
 Notes:      - Simulations of the task used by Marzecova et al. (2019)
             - Release notes:
@@ -61,6 +61,8 @@ plotnr = 0
 alpha_options = np.linspace(0.01, 1, 40)
 # Beta options
 beta_options = np.linspace(0.1, 20, 40)
+# Bias options
+bias_options = np.linspace(-1, 1, 40)
 
 # Create experimental structure to train models on
 exStruc = sf.sim_experiment()
@@ -73,10 +75,11 @@ exStruc = sf.sim_experiment()
 
 for simi in range(N_SIMS):
     for alphai in alpha_options:
-        # Parameter values
-        ## Select random alpha/eta and beta
-        beta = np.random.choice(beta_options)
         title = f'simData_sim{simi}_alpha_{alphai}'
+        # Parameter values
+        ## Select random beta and bias
+        beta = np.random.choice(beta_options)
+        bias = np.random.choice(bias_options)
         
         # Models with argmax policy
         Daphne_arg = sf.simRW_1c((alphai, ), exStruc, asm='arg')
@@ -102,10 +105,10 @@ for simi in range(N_SIMS):
         # plotnr += 1
         
         # Models with biased SoftMax policy
-        Daphne_bsoft = sf.simRW_1c((alphai, beta), exStruc, asm='bsoft')
-        Hugo_bsoft = sf.simHybrid_1c((alphai, beta), Daphne_bsoft, asm='bsoft')
-        Michelle_bsoft = sf.simMeta_1c(alphai, beta, alphai, Hugo_bsoft,
-                                      asm='bsoft')
+        Daphne_bsoft = sf.simRW_1c((alphai, beta, bias), exStruc)
+        Hugo_bsoft = sf.simHybrid_1c((alphai, beta, bias), Daphne_bsoft)
+        Michelle_bsoft = sf.simMeta_1c((alphai, beta, alphai, bias),
+                                       Hugo_bsoft)
         Wilhelm_bsoft = sf.simWSLS(Michelle_bsoft)
         Renee_bsoft = sf.simRandom(Wilhelm_bsoft)
         Renee_bsoft.to_csv(BIAS_DIR / (title + f'_beta_{beta}_bsoftmax.csv'))
