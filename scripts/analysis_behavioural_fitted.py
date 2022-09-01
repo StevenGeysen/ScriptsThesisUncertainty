@@ -99,11 +99,9 @@ thetas_RW_soft = pd.read_csv(RES_DIR / 'pp_NelderMead_10iters_softmax_RW.csv',
 thetas_H_soft = pd.read_csv(RES_DIR / 'pp_NelderMead_10iters_softmax_H.csv',
                             index_col='Unnamed: 0')
 
-# Number of iterations
-N_ITERS = 10
 # Models with optimiseable parameters
-# MDLS = ['RW', 'H', 'M']
 MDLS = ['RW', 'H']
+# MDLS = ['RW', 'H', 'M']
 # Number of participants
 npp = un_data['id'].max()
 # Number of trials in bin
@@ -111,23 +109,11 @@ NBIN = 15
 # Relevant variables
 relVar = ['RT', 'RPE_RW', 'RPE_H', 'alpha_H']
 
-# Alpha/eta options
-alpha_options = np.linspace(0.01, 1, 20)
-# Beta options
-##SG: The SoftMax policy needs a high beta value for the model to be accurate
-    # (see simulations). Therefore it is not usefull to look at beta values
-    # smaller than 10.
-beta_options = np.linspace(10, 20, 20)
-
 # Plot specs
 ## Plot number
 plotnr = 0
 ## Plot labels
-plabels = ['Valid trials', 'Invalid trials']
-## Model labels
-models = af.labelDict()
-##SG: To have the smallest alpha and beta values in the same corner (left-down)
-plotbetas = np.flip(beta_options)
+plabels = ['All data', 'Low UUn', 'High UUn']
 
 
 
@@ -169,9 +155,8 @@ low_data = complete_data[complete_data['gammaBlock'] >= 0.8]
 high_data = complete_data[complete_data['gammaBlock'] < 0.8]
 
 dataList = [complete_data, low_data, high_data]
-labeList = ['All data', 'Low UUn', 'High UUn']
 
-for datai, labeli in zip(dataList, labeList):
+for datai, labeli in zip(dataList, plabels):
     post15, middle15, leftover, last15, pre15 = af.bin_switch(
         datai, relVar
         )
