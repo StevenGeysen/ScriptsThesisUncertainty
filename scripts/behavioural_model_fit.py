@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Behavioural model fit -- Version 3.1
-Last edit:  2022/08/27
+"""     Behavioural model fit -- Version 3.1.3
+Last edit:  2022/09/01
 Author(s):  Geysen, Steven (SG)
 Notes:      - Fit models to behavioural data of Marzecova et al. (2019)
             - Release notes:
-                * Smaller parameter range
+                * Removed redundant plots
+                * Fixed Nelder-Mead bug
                 
 To do:      - Fit models
             - Statistics
@@ -14,7 +15,7 @@ Questions:
             
 Comments:   AM: The data file was merged in R, from the single files generated
                 in Matlab (they are also attached) - they include parameters
-                from the Yu & Dayan's (2005) computational model.
+                from Yu & Dayan's (2005) computational model.
                 The columns contain:
                     * 'id' - participants id
                     * 'block' - block # of the task
@@ -115,14 +116,14 @@ alpha_options = np.linspace(0.01, 1, 20)
 beta_options = np.linspace(10, 20, 20)
 
 # Plot specs
-##SG: To have the smallest alpha and beta values in the same corner (left-down)
-plotbetas = np.flip(beta_options)
 ## Plot number
 plotnr = 0
 ## Plot labels
 plabels = ['Valid trials', 'Invalid trials']
 ## Model labels
 models = af.labelDict()
+##SG: To have the smallest alpha and beta values in the same corner (left-down)
+plotbetas = np.flip(beta_options)
 
 
 
@@ -342,7 +343,6 @@ for ppi in range(npp):
         
         # Intermittent checking
         if ppi % 2 == 0:
-            plt.figure(plotnr)
             fig, ax = plt.subplots()
             im, _ = pf.heatmap(np.rot90(one_totpp[:, :, locm]),
                                np.round(plotbetas, 3),
@@ -363,30 +363,13 @@ for locm, modeli in enumerate(MDLS):
     pd.DataFrame(gridThetas[:, locm, :],
                  columns=['alpha', 'beta']).to_csv(OUT_DIR / title)
 
-# Correlation plot
-fig, axs = plt.subplots(nrows=1, ncols=2)
-fig.suptitle('Parameter estimation Grid search')
-for pari, ax in enumerate(axs):
-    for locm, modeli in enumerate(MDLS):
-        ax.plot(gridThetas[:, locm, pari], 'o', label=f'{models[modeli]}')
-    ax.set_ylabel('Initial guess')
-
-axs[0].set_xlabel('Mean estimated alpha/eta values')
-axs[0].set_yticks(np.round(alpha_options, 3))
-axs[1].set_xlabel('Mean estimated beta values')
-axs[1].set_yticks(np.round(beta_options, 3))
-plt.legend()
-
-plt.show()
-plotnr += 1
-
 
 
 #%% ~~ Nelder - Mead ~~ %%#
 
 
 initial_guess = np.full((npp, N_ITERS, 2), np.nan)
-nmThetas = np.full((npp, len(MDLS), 2), np.nan)
+nmThetas = np.zeros((npp, len(MDLS), 2))
 
 start_total = time.time()
 for ppi in range(npp):
@@ -425,6 +408,7 @@ for pari, ax in enumerate(axs):
         ax.plot(nmThetas[:, locm, pari], 'o', label=f'{models[modeli]}')
     ax.set_ylabel('Initial guess')
 
+axs[0].set_xticks(np.round(alpha_options, 3))
 axs[0].set_xlabel('Mean estimated alpha/eta values')
 axs[0].set_yticks(np.round(alpha_options, 3))
 axs[1].set_xlabel('Mean estimated beta values')
@@ -482,22 +466,6 @@ pd.DataFrame(gridThetas[:, :, -1], columns=MDLS).to_csv(OUT_DIR / title)
     # parameters is big.
 print(stats.ttest_rel(gridThetas[:, 0, -1], gridThetas[:, 1, -1],
                       nan_policy='omit'))
-
-
-# Correlation plot
-fig, ax = plt.subplots()
-fig.suptitle('Parameter estimation Grid search')
-for locm, modeli in enumerate(MDLS):
-    # Plot
-    ax.plot(gridThetas[:, locm], 'o', label=f'{models[modeli]}')
-
-ax.set_xlabel('Mean estimated values')
-ax.set_ylabel('Initial guess')
-ax.set_yticks(np.round(alpha_options, 3))
-plt.legend()
-
-plt.show()
-plotnr += 1
 
 
 
