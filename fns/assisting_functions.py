@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Assisting functions -- Version 2.1
+"""     Assisting functions -- Version 3
 Last edit:  2022/09/01
 Author(s):  Geysen, Steven (SG)
 Notes:      - Assisting functions to reduce repetition
@@ -8,8 +8,9 @@ Notes:      - Assisting functions to reduce repetition
                 * policy
                 * save_data
                 * pairwise
+                * bin_switch
             - Release notes:
-                * Biased SoftMax
+                * bin_switch
 To do:      - 
             
 Questions:  
@@ -121,6 +122,93 @@ def pairwise(iterable):
     next(b, None)
 
     return zip(a, b)
+
+
+def bin_switch(data, varList):
+    """
+    Bin data before and after switch
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Data of the experiment.
+    varList : tuple, list, array
+        List with the names of the relevant variables.
+
+    Returns
+    -------
+    post15 : dictionary
+        First 15 trials after switch.
+    middle15 : dictionary
+        Trials 15 to 30.
+    leftover : dictionary
+        All trials except for first 30.
+    last15 : dictionary
+        Last 15 trials, less if there are less then 45 trials between switches.
+    pre15 : dictionary
+        The 15 trials before switch.
+    """
+
+    # Variables
+    #----------
+    # Number of participants
+    npp = data['id'].max()
+    # Number of trials in bin
+    NBIN = 15
+    
+    # Trial bins
+    post15 = {vari:[] for vari in varList}
+    middle15 = {vari:[] for vari in varList}
+    leftover = {vari:[] for vari in varList}
+    last15 = {vari:[] for vari in varList}
+    pre15 = {vari:[] for vari in varList}
+
+    for ppi in range(npp):
+        ## Skip pp6 (not in data)
+        if ppi + 1 == 6:
+            continue
+        ## Use only data from pp
+        pp_data = data[data['id'] == ppi + 1]
+        pp_data.reset_index(drop=True, inplace=True)
+        
+        # Switch points
+        lag_relCueCol = pp_data.relCueCol.eq(pp_data.relCueCol.shift())
+        switch_points = np.where(lag_relCueCol == False)[0]
+        switch_points = np.append(switch_points, len(pp_data))
+        
+        for starti, endi in pairwise(switch_points):
+            nover = endi - starti - 30
+            for vari in varList:
+                post15[vari].append(
+                    pp_data.loc[starti:(starti + NBIN - 1)][vari].to_numpy()
+                    )
+                middle15[vari].append(
+                    pp_data.loc[(starti + NBIN):(starti + 2 * NBIN - 1)][vari].to_numpy()
+                    )
+                leftover[vari].append(
+                    pp_data.loc[(starti + 2 * NBIN):(endi - 1)][vari].to_numpy()
+                    )
+                pre15[vari].append(
+                    pp_data.loc[(endi - NBIN):(endi - 1)][vari].to_numpy()
+                    )
+                ##SG: Last 15 trials or less if there were less than 45 trials
+                    # between switches.
+                if nover >= 15:
+                    last15[vari].append(
+                        pp_data.loc[(endi - NBIN):(endi - 1)][vari].to_numpy()
+                        )
+                else:
+                    last15[vari].append(
+                        pp_data.loc[(endi - nover):(endi - 1)][vari].to_numpy()
+                        )
+    # List of arrays to matrix
+    ##SG: Works only if input arrays have the same shape (not always the case
+        # with leftover and last15).
+    for bini in [post15, middle15, pre15]:
+        for vari in varList:
+            bini[vari] = np.stack(bini[vari], axis=0)
+
+    return post15, middle15, leftover, last15, pre15
 
 
 
