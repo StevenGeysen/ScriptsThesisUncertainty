@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Analysis behavioural fitted -- Version 3
-Last edit:  2022/09/01
+"""     Analysis behavioural fitted -- Version 4
+Last edit:  2022/09/03
 Author(s):  Geysen, Steven (SG)
 Notes:      - Analysis of behavioural data after model fitting
             - Release notes:
-                * Bin function
-                * UUn split Grossman plot
+                * Low-medium-high plot
+                * Model comparison
+                    - AIC
+                    - BIC
                 
-To do:      - Plots expected uncertainty
-                * Low-medium-high (Marzecova et al., 2019)
-            - Model comparison
-                * LME
+To do:      - Model comparison
             
 Questions:  
             
@@ -54,6 +53,8 @@ Comments:   AM: The data file was merged in R, from the single files generated
                     * 'logRTexp" - log RT
             
 Sources:    List of arrays to matrix ( https://stackoverflow.com/a/48456883 )
+            https://gist.github.com/jcheong0428/f25b47405d9d328691c102787bc92175#file-lmer-in-python-ipynb
+            https://www.statology.org/aic-in-python/
 """
 
 
@@ -66,11 +67,14 @@ import pandas as pd
 
 import fns.assisting_functions as af
 import fns.behavioural_functions as bf
-import fns.plot_functions as pf
 import matplotlib.pyplot as plt
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
 
 from pathlib import Path
 from scipy import optimize, stats
+
+from sklearn.linear_model import LinearRegression
 
 
 # Directories
@@ -99,9 +103,6 @@ thetas_RW_soft = pd.read_csv(RES_DIR / 'pp_NelderMead_10iters_softmax_RW.csv',
 thetas_H_soft = pd.read_csv(RES_DIR / 'pp_NelderMead_10iters_softmax_H.csv',
                             index_col='Unnamed: 0')
 
-# Models with optimiseable parameters
-MDLS = ['RW', 'H']
-# MDLS = ['RW', 'H', 'M']
 # Number of participants
 npp = un_data['id'].max()
 # Number of trials in bin
@@ -114,6 +115,7 @@ relVar = ['RT', 'RPE_RW', 'RPE_H', 'alpha_H']
 plotnr = 0
 ## Plot labels
 plabels = ['All data', 'Low UUn', 'High UUn']
+binlabels = ['First 15', 'Middle 15', 'Leftover', 'Last', 'Last 15']
 
 
 
@@ -158,9 +160,16 @@ dataList = [complete_data, low_data, high_data]
 
 for datai, labeli in zip(dataList, plabels):
     post15, middle15, leftover, last15, pre15 = af.bin_switch(
-        datai, relVar
+        datai, relVar, NBIN
         )
+    # List of arrays to matrix
+    ##SG: Works only if input arrays have the same shape (not always the case
+        # with leftover and last15).
+    for bini in [post15, middle15, pre15]:
+        for vari in relVar:
+            bini[vari] = np.stack(bini[vari], axis=0)
     
+    # Grossman et al. (2022)
     fig, axs = plt.subplots(nrows=2, ncols=2)
     fig.suptitle(labeli)
     for vari, ploti in zip(relVar, np.ravel(axs)):
@@ -182,12 +191,69 @@ for datai, labeli in zip(dataList, plabels):
         ploti.fill_between(np.linspace(0,29,30), topsd, minsd, alpha=0.2)
         
         ploti.set_xticks(np.linspace(0, 30, 5),
-                      labels=[-15, 'before', 'switch', 'after', 15])
+                         labels=[-15, 'before', 'switch', 'after', 15])
         ploti.set_xlabel('trials')
         ploti.set_ylabel(vari)
     
     plt.show()
     plotnr += 1
+    
+    # Marzecová et al. (2019)
+    binlist = [post15, middle15, leftover, last15, pre15]
+    fig, axs = plt.subplots(nrows=2, ncols=2)
+    fig.suptitle(labeli)
+    for vari, ploti in zip(relVar, np.ravel(axs)):
+        plotbins = []
+        for bini in binlist:
+            data_1d = np.concatenate(bini[vari], axis=None)
+            filtered_data = data_1d[~np.isnan(data_1d)]
+            plotbins.append(filtered_data)
+        if vari == 'RT':
+            ##SG: RT has too much outliers to be clear as violin plot.
+            ploti.boxplot(plotbins, showfliers=False)
+        else:
+            ploti.violinplot(plotbins, showmeans=False, showmedians=True)
+        ploti.set_xticks(
+            [y + 1 for y in range(len(binlist))],
+            labels=binlabels
+            )
+        ploti.set_ylabel(vari)
+    plt.show()
+    plotnr += 1
+
+
+
+#%% ~~ Model comparison ~~ %%#
+##############################
+
+
+# RW_predictors = ['prob_RW', 'RPE_RW', 'Qest_0_RW', 'Qest_1_RW']
+RW_predictors = ['RPE_RW', 'Qest_0_RW', 'Qest_1_RW']
+# hybrid_predictors = ['prob_H', 'alpha_H', 'RPE_H', 'Qest_0_H', 'Qest_1_H']
+hybrid_predictors = ['alpha_H', 'RPE_H', 'Qest_0_H', 'Qest_1_H']
+# general_predictors = [
+#     'block', 'trial', 'relCue', 'irrelCue', 'validity', 'targetLoc',
+#     'relCueCol', 'gammaBlock', 'correct'
+#     ]
+general_predictors = [
+    'trial', 'validity', 'targetLoc', 'gammaBlock', 'correct'
+    ]
+
+outcome_data = complete_data['RT']
+lm_data_RW = complete_data[general_predictors + RW_predictors]
+lm_data_RW = sm.add_constant(lm_data_RW)
+lm_data_hyb = complete_data[general_predictors + hybrid_predictors]
+lm_data_hyb = sm.add_constant(lm_data_hyb)
+
+mdl_RW = sm.OLS(outcome_data, lm_data_RW, missing='drop').fit()
+print(mdl_RW.summary())
+print('AIC RW', mdl_RW.aic)
+print('BIC RW', mdl_RW.bic)
+
+mdl_hyb = sm.OLS(outcome_data, lm_data_hyb, missing='drop').fit()
+print(mdl_hyb.summary())
+print('AIC Hybrid', mdl_hyb.aic)
+print('BIC Hybrid', mdl_hyb.bic)
 
 
 
