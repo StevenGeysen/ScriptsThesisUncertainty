@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Assisting functions -- Version 3
-Last edit:  2022/09/01
+"""     Assisting functions -- Version 3.2.1
+Last edit:  2022/09/03
 Author(s):  Geysen, Steven (SG)
 Notes:      - Assisting functions to reduce repetition
                 * labelDict
@@ -10,7 +10,7 @@ Notes:      - Assisting functions to reduce repetition
                 * pairwise
                 * bin_switch
             - Release notes:
-                * bin_switch
+                * Add bin_size to bin_switch
 To do:      - 
             
 Questions:  
@@ -124,7 +124,7 @@ def pairwise(iterable):
     return zip(a, b)
 
 
-def bin_switch(data, varList):
+def bin_switch(data, varList, bin_size=15):
     """
     Bin data before and after switch
 
@@ -134,6 +134,8 @@ def bin_switch(data, varList):
         Data of the experiment.
     varList : tuple, list, array
         List with the names of the relevant variables.
+    bin_size : int, optional
+        Number of trials grouped together. The default is 15.
 
     Returns
     -------
@@ -153,8 +155,6 @@ def bin_switch(data, varList):
     #----------
     # Number of participants
     npp = data['id'].max()
-    # Number of trials in bin
-    NBIN = 15
     
     # Trial bins
     post15 = {vari:[] for vari in varList}
@@ -177,36 +177,30 @@ def bin_switch(data, varList):
         switch_points = np.append(switch_points, len(pp_data))
         
         for starti, endi in pairwise(switch_points):
-            nover = endi - starti - 30
+            nover = endi - starti - (2 * bin_size)
             for vari in varList:
                 post15[vari].append(
-                    pp_data.loc[starti:(starti + NBIN - 1)][vari].to_numpy()
+                    pp_data.loc[starti:(starti + bin_size - 1)][vari].to_numpy()
                     )
                 middle15[vari].append(
-                    pp_data.loc[(starti + NBIN):(starti + 2 * NBIN - 1)][vari].to_numpy()
+                    pp_data.loc[(starti + bin_size):(starti + 2 * bin_size - 1)][vari].to_numpy()
                     )
                 leftover[vari].append(
-                    pp_data.loc[(starti + 2 * NBIN):(endi - 1)][vari].to_numpy()
+                    pp_data.loc[(starti + 2 * bin_size):(endi - 1)][vari].to_numpy()
                     )
                 pre15[vari].append(
-                    pp_data.loc[(endi - NBIN):(endi - 1)][vari].to_numpy()
+                    pp_data.loc[(endi - bin_size):(endi - 1)][vari].to_numpy()
                     )
                 ##SG: Last 15 trials or less if there were less than 45 trials
                     # between switches.
-                if nover >= 15:
+                if nover >= bin_size:
                     last15[vari].append(
-                        pp_data.loc[(endi - NBIN):(endi - 1)][vari].to_numpy()
+                        pp_data.loc[(endi - bin_size):(endi - 1)][vari].to_numpy()
                         )
                 else:
                     last15[vari].append(
                         pp_data.loc[(endi - nover):(endi - 1)][vari].to_numpy()
                         )
-    # List of arrays to matrix
-    ##SG: Works only if input arrays have the same shape (not always the case
-        # with leftover and last15).
-    for bini in [post15, middle15, pre15]:
-        for vari in varList:
-            bini[vari] = np.stack(bini[vari], axis=0)
 
     return post15, middle15, leftover, last15, pre15
 
