@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Model functions -- Version 4.1
-Last edit:  2022/08/25
+"""     Model functions -- Version 5
+Last edit:  2022/09/08
 Author(s):  Geysen, Steven (SG)
 Notes:      - Models for the ananlysis of behavioural data from
                 Marzecova et al. (2019)
@@ -12,8 +12,10 @@ Notes:      - Models for the ananlysis of behavioural data from
                     - Win-stay-lose-shift (Wilhelm)
                     - Random (Renee)
                 * Negative Spearman correlation
+                * bin_switch
+                * var_bin_switch
             - Release notes:
-                * Fixed bug in pp_negSpearCor()
+                * var_- and bin_switch
 To do:      - Adjust models to behavioural data
             - Meta learner
             
@@ -780,6 +782,190 @@ def pp_negSpearCor(thetas, data, model, asm='soft'):
     return - stats.spearmanr(simData['RT'].to_numpy(),
                              simData[f'RPE_{model}'].to_numpy(),
                              nan_policy = 'omit')[0]
+
+
+def bin_switch(data, varList, bin_size=15):
+    """
+    Bin data before and after switch
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Data of the experiment.
+    varList : tuple, list, array
+        List with the names of the relevant variables.
+    bin_size : int, optional
+        Number of trials grouped together. The default is 15.
+
+    Returns
+    -------
+    post15 : dictionary
+        First 15 trials after switch.
+    middle15 : dictionary
+        Trials 15 to 30.
+    leftover : dictionary
+        All trials except for first 30.
+    last15 : dictionary
+        Last 15 trials, less if there are less then 45 trials between switches.
+    pre15 : dictionary
+        The 15 trials before switch.
+    """
+
+    # Variables
+    #----------
+    # Number of participants
+    npp = data['id'].max()
+    
+    # Trial bins
+    post15 = {vari:[] for vari in varList}
+    middle15 = {vari:[] for vari in varList}
+    leftover = {vari:[] for vari in varList}
+    last15 = {vari:[] for vari in varList}
+    pre15 = {vari:[] for vari in varList}
+
+    for ppi in range(npp):
+        ## Skip pp6 (not in data)
+        if ppi + 1 == 6:
+            continue
+        ## Use only data from pp
+        pp_data = data[data['id'] == ppi + 1]
+        pp_data.reset_index(drop=True, inplace=True)
+        
+        # Switch points
+        lag_relCueCol = pp_data.relCueCol.eq(pp_data.relCueCol.shift())
+        switch_points = np.where(lag_relCueCol == False)[0]
+        switch_points = np.append(switch_points, len(pp_data))
+        
+        for starti, endi in af.pairwise(switch_points):
+            nover = endi - starti - (2 * bin_size)
+            for vari in varList:
+                post15[vari].append(
+                    pp_data.loc[starti:(starti + bin_size - 1)][vari].to_numpy()
+                    )
+                middle15[vari].append(
+                    pp_data.loc[(starti + bin_size):(starti + 2 * bin_size - 1)][vari].to_numpy()
+                    )
+                leftover[vari].append(
+                    pp_data.loc[(starti + 2 * bin_size):(endi - 1)][vari].to_numpy()
+                    )
+                pre15[vari].append(
+                    pp_data.loc[(endi - bin_size):(endi - 1)][vari].to_numpy()
+                    )
+                ##SG: Last 15 trials or less if there were less than 45 trials
+                    # between switches.
+                if nover >= bin_size:
+                    last15[vari].append(
+                        pp_data.loc[(endi - bin_size):(endi - 1)][vari].to_numpy()
+                        )
+                else:
+                    last15[vari].append(
+                        pp_data.loc[(endi - nover):(endi - 1)][vari].to_numpy()
+                        )
+
+    return post15, middle15, leftover, last15, pre15
+
+
+def var_bin_switch(data, varList, bin_size=15, uun='All'):
+    """
+    Bin variability effect of behavioural data before and after switch
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Data of the experiment.
+    varList : tuple, list, array
+        List with the names of the relevant variables.
+    bin_size : int, optional
+        Number of trials grouped together. The default is 15.
+
+    Returns
+    -------
+    post15 : dictionary
+        First 15 trials after switch.
+    middle15 : dictionary
+        Trials 15 to 30.
+    leftover : dictionary
+        All trials except for first 30.
+    last15 : dictionary
+        Last 15 trials, less if there are less then 45 trials between switches.
+    pre15 : dictionary
+        The 15 trials before switch.
+    """
+
+    # Variables
+    #----------
+    # Number of participants
+    npp = data['id'].max()
+    # Trial bins
+    post15 = {vari:[] for vari in varList}
+    middle15 = {vari:[] for vari in varList}
+    leftover = {vari:[] for vari in varList}
+    last15 = {vari:[] for vari in varList}
+    pre15 = {vari:[] for vari in varList}
+
+    for ppi in range(npp):
+        ## Skip pp6 (not in data)
+        if ppi + 1 == 6:
+            continue
+        ## Use only data from pp
+        pp_data = data[data['id'] == ppi + 1]
+        
+        if uun.upper() == 'HIGH':
+            pp_data = pp_data[pp_data['gammaBlock'] <= 0.8]
+        elif uun.upper() == 'LOW':
+            pp_data = pp_data[pp_data['gammaBlock'] > 0.8]
+        pp_data.reset_index(drop=True, inplace=True)
+        
+        # Switch points
+        lag_relCueCol = pp_data.relCueCol.eq(pp_data.relCueCol.shift())
+        switch_points = np.where(lag_relCueCol == False)[0]
+        switch_points = np.append(switch_points, len(pp_data))
+        
+        for starti, endi in af.pairwise(switch_points):
+            nover = endi - starti - (2 * bin_size)
+            for vari in varList:
+                # First 15 trials after switch
+                post15_data = pp_data.loc[starti:
+                                           (starti + bin_size - 1)][['validity', vari]]
+                post15[vari].append(
+                    np.nanmean(post15_data[post15_data['validity'] == 0][vari]) -\
+                    np.nanmean(post15_data[post15_data['validity'] == 1][vari])
+                    )
+                # Trials 15 to 30
+                middle15_data = pp_data.loc[(starti + bin_size):
+                                             (starti + 2 * bin_size - 1)][['validity', vari]]
+                middle15[vari].append(
+                    np.nanmean(middle15_data[middle15_data['validity'] == 0][vari]) -\
+                    np.nanmean(middle15_data[middle15_data['validity'] == 1][vari])
+                    )
+                # All trials except for first 30
+                left_data = pp_data.loc[(starti + 2 * bin_size):
+                                         (endi - 1)][['validity', vari]]
+                leftover[vari].append(
+                    np.nanmean(left_data[left_data['validity'] == 0][vari]) -\
+                    np.nanmean(left_data[left_data['validity'] == 1][vari])
+                    )
+                # The 15 trials before switch
+                pre15_data = pp_data.loc[(endi - bin_size):
+                                          (endi - 1)][['validity', vari]]
+                pre15[vari].append(
+                    np.nanmean(pre15_data[pre15_data['validity'] == 0][vari]) -\
+                    np.nanmean(pre15_data[pre15_data['validity'] == 1][vari])
+                    )
+                # Last 15 trials or less if there were less than 45 trials
+                # between switches
+                if nover >= bin_size:
+                    last15_data = pp_data.loc[(endi - bin_size):
+                                               (endi - 1)][['validity', vari]]
+                else:
+                    last15_data = pp_data.loc[(endi - nover):
+                                               (endi - 1)][['validity', vari]]
+                last15[vari].append(
+                    np.nanmean(last15_data[last15_data['validity'] == 0][vari]) -\
+                    np.nanmean(last15_data[last15_data['validity'] == 1][vari])
+                    )
+
+    return post15, middle15, leftover, last15, pre15
 
 
 

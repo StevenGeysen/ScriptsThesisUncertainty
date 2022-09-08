@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Simulation functions -- Version 3.2
-Last edit:  2022/09/01
+"""     Simulation functions -- Version 4
+Last edit:  2022/09/08
 Author(s):  Geysen, Steven (SG)
 Notes:      - Functions used for the simulation of the task used by
                 Marzecova et al. (2019). Both structure and models.
@@ -13,9 +13,11 @@ Notes:      - Functions used for the simulation of the task used by
                     - Random (Renee)
                 * (negaitve) log likelihood
                 * Negative Spearman correlation
+                * Accuracy
+                * var_bin_switch
             - Release notes:
-                * Fixed bug in sim_negSpearCor()
-                * Worked on Michelle
+                * Added gammaBlock to experimental structure
+                * var_bin_switch
             
 To do:      - Meta learner
             
@@ -77,14 +79,15 @@ def sim_experiment(simnr=1, ntrials=640, nswitch=7):
             4. 'irrelCue'- direction of the irrelevant cue (0: left / 1: right)
             5. 'targetLoc' - location of the target (0: left / 1: right)
             6. 'validity' - trial validity
+            7. 'gammaBlock' - the validity level within the block
     """
 
     # Variables
     #----------
     # DataFrame
     column_list = [
-        'id', 'trial',
-        'relCueCol', 'relCue', 'irrelCue', 'targetLoc', 'validity'
+        'id', 'trial', 'relCueCol', 'relCue', 'irrelCue', 'targetLoc',
+        'validity', 'gammaBlock'
         ]
     dataDict = {keyi: [] for keyi in column_list}
     dataDict['id'] = simnr
@@ -130,6 +133,7 @@ def sim_experiment(simnr=1, ntrials=640, nswitch=7):
                 ## Remove first item in switch
                 switch = np.delete(switch, 0)
         dataDict['relCueCol'].append(relCueCol)
+        dataDict['gammaBlock'].append(prob[relCueCol])
         
         # Stimuli
         stim = np.random.choice(n_stim, n_stim, p =  [0.5, 0.5])
@@ -984,7 +988,7 @@ def sim_negSpearCor(thetas, data, model, asm='soft'):
 
     model = model.upper()
     # Wilhelm and Renee do not simulate RTs.
-    assert not model in ['W', 'R', 'M'], 'Model has no simulated RT'
+    assert not model in ['W', 'R'], 'Model has no simulated RT'
 
     # Rename to avoid duplicates
     data = data.rename(columns={f'selCue_{model}': 'selCue',
@@ -999,6 +1003,145 @@ def sim_negSpearCor(thetas, data, model, asm='soft'):
     return - stats.spearmanr(simData[f'rt_{model}'].to_numpy(),
                              simData[f'RPE_{model}'].to_numpy(),
                              nan_policy = 'omit')[0]
+
+
+def sim_accuracy(thetas, data, model, asm='soft'):
+    """
+    Model accuracy
+
+    Parameters
+    ----------
+    thetas : list, array, tuple
+        Parameter values.
+    data : pd.DataFrame
+        Prepared data of simulation, containing structure of experiment.
+        Doesn't need to go through rescon first.
+    model : string
+        Name of the used model:
+            RW - Rescorla-Wagner
+            H - RW-PH hybrid
+            M - Meta learner
+            W - Win-stay-lose-shift
+            R - Random
+    asm : string, optional
+        The action selection method, policy. The default is SoftMax.
+
+    Returns
+    -------
+    Accuracy
+    """
+
+    # Rename to avoid duplicates
+    data = data.rename(columns={f'selCue_{model}': 'selCue',
+                                f'prob_{model}': 'prob',
+                                f'rt_{model}': 'rt',
+                                f'RPE_{model}': 'RPE'})
+    
+    model = model.upper()
+    # Simulate data
+    modelDict = sim_models()
+    if model in ['W', 'R']:
+        simData = modelDict[model](data)
+    else:
+        simData = modelDict[model](parameters=thetas, data=data, asm=asm)
+
+    return sum(simData['relCue'] == simData[f'selCue_{model}']) / len(data)
+
+
+def var_bin_switch(dataList, datadir, varList, bin_size=15, uun='All'):
+    """
+    Bin variability effect of simulated data before and after switch
+
+    Parameters
+    ----------
+    dataList : list
+        List containing the data filenames.
+    datadir : Path
+        Location of the data.
+    varList : tuple, list, array
+        List with the names of the relevant variables.
+    bin_size : int, optional
+        Number of trials grouped together. The default is 15.
+
+    Returns
+    -------
+    post15 : dictionary
+        First 15 trials after switch.
+    middle15 : dictionary
+        Trials 15 to 30.
+    leftover : dictionary
+        All trials except for first 30.
+    last15 : dictionary
+        Last 15 trials, less if there are less then 45 trials between switches.
+    pre15 : dictionary
+        The 15 trials before switch.
+    """
+
+    # Trial bins
+    post15 = {vari:[] for vari in varList}
+    middle15 = {vari:[] for vari in varList}
+    leftover = {vari:[] for vari in varList}
+    last15 = {vari:[] for vari in varList}
+    pre15 = {vari:[] for vari in varList}
+
+    for simi, filei in enumerate(dataList):
+        sim_data = pd.read_csv(datadir / filei, index_col='Unnamed: 0')
+        if uun.upper() == 'HIGH':
+            sim_data = sim_data[sim_data['gammaBlock'] <= 0.8]
+        elif uun.upper() == 'LOW':
+            sim_data = sim_data[sim_data['gammaBlock'] > 0.8]
+        sim_data.reset_index(drop=True, inplace=True)
+        
+        # Switch points
+        lag_relCueCol = sim_data.relCueCol.eq(sim_data.relCueCol.shift())
+        switch_points = np.where(lag_relCueCol == False)[0]
+        switch_points = np.append(switch_points, len(sim_data))
+        
+        for starti, endi in af.pairwise(switch_points):
+            nover = endi - starti - (2 * bin_size)
+            for vari in varList:
+                # First 15 trials after switch
+                post15_data = sim_data.loc[starti:
+                                           (starti + bin_size - 1)][['validity', vari]]
+                post15[vari].append(
+                    np.nanmean(post15_data[post15_data['validity'] == 0][vari]) -\
+                    np.nanmean(post15_data[post15_data['validity'] == 1][vari])
+                    )
+                # Trials 15 to 30
+                middle15_data = sim_data.loc[(starti + bin_size):
+                                             (starti + 2 * bin_size - 1)][['validity', vari]]
+                middle15[vari].append(
+                    np.nanmean(middle15_data[middle15_data['validity'] == 0][vari]) -\
+                    np.nanmean(middle15_data[middle15_data['validity'] == 1][vari])
+                    )
+                # All trials except for first 30
+                left_data = sim_data.loc[(starti + 2 * bin_size):
+                                         (endi - 1)][['validity', vari]]
+                leftover[vari].append(
+                    np.nanmean(left_data[left_data['validity'] == 0][vari]) -\
+                    np.nanmean(left_data[left_data['validity'] == 1][vari])
+                    )
+                # The 15 trials before switch
+                pre15_data = sim_data.loc[(endi - bin_size):
+                                          (endi - 1)][['validity', vari]]
+                pre15[vari].append(
+                    np.nanmean(pre15_data[pre15_data['validity'] == 0][vari]) -\
+                    np.nanmean(pre15_data[pre15_data['validity'] == 1][vari])
+                    )
+                # Last 15 trials or less if there were less than 45 trials
+                # between switches
+                if nover >= bin_size:
+                    last15_data = sim_data.loc[(endi - bin_size):
+                                               (endi - 1)][['validity', vari]]
+                else:
+                    last15_data = sim_data.loc[(endi - nover):
+                                               (endi - 1)][['validity', vari]]
+                last15[vari].append(
+                    np.nanmean(last15_data[last15_data['validity'] == 0][vari]) -\
+                    np.nanmean(last15_data[last15_data['validity'] == 1][vari])
+                    )
+
+    return post15, middle15, leftover, last15, pre15
 
 
 
