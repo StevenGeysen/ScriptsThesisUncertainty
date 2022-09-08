@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Analysis optimal SoftMax -- Version 1
-Last edit:  2022/09/07
+"""     Analysis optimal SoftMax -- Version 2
+Last edit:  2022/09/08
 Author(s):  Geysen, Steven (SG)
 Notes:      - Analysis of data simulated with optimal parameter values
                 according to grid search(SoftMax models)
             - Release notes:
-                * Initial commit
+                * Validity effect
                 
 To do:      - Model comparison
             
@@ -28,7 +28,8 @@ import numpy as np
 import pandas as pd
 
 import fns.assisting_functions as af
-import fns.behavioural_functions as bf
+import fns.plot_functions as pf
+import fns.sim_functions as sf
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
@@ -41,9 +42,11 @@ from sklearn.linear_model import LinearRegression
 
 # Directories
 SPINE = Path.cwd().parent
-DATA_DIR = SPINE / 'data'
 RES_DIR = SPINE / 'results'
-OUT_DIR = RES_DIR / 'behavioural_analysis'
+SIM_DIR = RES_DIR / 'simulations'
+SOFT_DIR = SIM_DIR / 'softmax'
+DATA_DIR = SOFT_DIR / 'optimal'
+OUT_DIR = RES_DIR / 'analysis_optimal_soft'
 if not Path.exists(OUT_DIR):
     Path.mkdir(OUT_DIR)
 
@@ -52,66 +55,38 @@ if not Path.exists(OUT_DIR):
 #%% ~~ Variables ~~ %%#
 
 
-# Uncertainty data
-un_data = pd.read_csv(DATA_DIR / 'UnDataProjectSteven.csv')
-## Rescale 1-2 to 0-1
-scaList = [
-    'relCue', 'irrelCue', 'validity', 'targetLoc', 'relCueCol', 'guessCue'
-    ]
-un_data.loc[:, (scaList)] = abs(un_data.loc[:, (scaList)] - 1)
-## Parameter values
-thetas_RW_soft = pd.read_csv(RES_DIR / 'pp_NelderMead_10iters_softmax_RW.csv',
-                             index_col='Unnamed: 0')
-thetas_H_soft = pd.read_csv(RES_DIR / 'pp_NelderMead_10iters_softmax_H.csv',
-                            index_col='Unnamed: 0')
+# Filenames of simulated data
+simList = [filei.name for filei in Path.iterdir(DATA_DIR)]
+# simList = simList[:20]  ##SG: First few to test everything quickly.
+## One data frame
+dataList = []
+for filei in simList:
+    dataList.append(pd.read_csv(DATA_DIR / filei, index_col='Unnamed: 0'))
+all_data = pd.concat(dataList, ignore_index=True)
 
-# Number of participants
-npp = un_data['id'].max()
+# Experimental structure
+exStruc = pd.read_csv(DATA_DIR / simList[0], index_col='Unnamed: 0')
+# Parameter values
+thetas = pd.read_csv(SIM_DIR / 'sim_gridsearch_50iters_softmax_optimal.csv',
+                     index_col='Unnamed: 0')
+
 # Number of trials in bin
 NBIN = 15
 # Number of iterations
 N_ITERS = 10
+# Number of simulations
+nsims = len(simList)
 # Relevant variables
-relVar = ['RT', 'RPE_RW', 'RPE_H', 'alpha_H']
+relVar = ['rt_RW', 'RPE_RW', 'rt_H', 'RPE_H', 'alpha_H']
 # Models with free parameters
-# MDLS = ['RW', 'H', 'M']
 MDLS = ['RW', 'H']
 
 # Plot specs
 ## Plot number
 plotnr = 0
 ## Plot labels
-plabels = ['All data', 'Low UUn', 'High UUn']
-binlabels = ['First 15', 'Middle 15', 'Leftover', 'Last', 'Last 15']
-
-
-
-#%% ~~ Add models ~~ %%#
-########################
-
-dataList = []
-
-for ppi in range(npp):
-    ## Skip pp6 (not in data)
-    if ppi + 1 == 6:
-        continue
-    ## Use only data from pp
-    pp_data = un_data[un_data['id'] == ppi + 1]
-    pp_data.reset_index(drop=True, inplace=True)
-    ## Parameter values
-    thetaRW = thetas_RW_soft.loc[ppi]
-    thetaH = thetas_H_soft.loc[ppi]
-    
-    # Add models' estimates
-    Daphne = bf.ppRW_1c(thetaRW, pp_data)
-    Hugo = bf.ppHybrid_1c(thetaH, Daphne)
-    Wilhelm = bf.ppWSLS(Hugo)
-    Renee = bf.ppRandom(Wilhelm)
-    
-    dataList.append(Renee)
-
-# One data frame
-complete_data = pd.concat(dataList, ignore_index=True)
+plabels = ['All', 'Low', 'High']
+binlabels = ['First 15', 'Middle 15', 'Last']
 
 
 
@@ -119,62 +94,35 @@ complete_data = pd.concat(dataList, ignore_index=True)
 #########################
 
 
-# Separate data sets for convenience
-low_data = complete_data[complete_data['gammaBlock'] >= 0.8]
-high_data = complete_data[complete_data['gammaBlock'] < 0.8]
+#%% ~~ Plots ~~ %%#
+#-----------------#
 
-dataList = [complete_data, low_data, high_data]
 
-for datai, labeli in zip(dataList, plabels):
-    print(labeli.center(20, '='))
-    post15, middle15, leftover, last15, pre15 = af.bin_switch(
-        datai, relVar, NBIN
+# Learning curve
+pf.learning_curve(simList, DATA_DIR, plotnr, wsls=True)
+plotnr += 1
+for modeli in ['RW', 'H', 'W', 'R']:
+    print(sum(all_data['relCue'] == all_data[f'selCue_{modeli}']) / len(all_data))
+
+# Stay behaviour
+pf.p_stay(simList, DATA_DIR, plotnr)
+plotnr += 1
+
+
+
+#%% ~~ Validity effect ~~ %%#
+#---------------------------#
+
+
+for labeli in plabels:
+    print(f' {labeli} UUn '.center(20, '='))
+    post15, middle15, _, last15, pre15 = sf.var_bin_switch(
+        simList, DATA_DIR, relVar, NBIN, labeli
         )
-    # List of arrays to matrix
-    ##SG: Works only if input arrays have the same shape (not always the case
-        # with leftover and last15).
-    for bini in [post15, middle15, pre15]:
-        for vari in relVar:
-            bini[vari] = np.stack(bini[vari], axis=0)
-    
-    # Grossman et al. (2022)
-    fig, axs = plt.subplots(nrows=2, ncols=2)
-    fig.suptitle(labeli)
-    for vari, ploti in zip(relVar, np.ravel(axs)):
-        # Mean values
-        meanplot = np.ravel(np.stack([np.nanmean(pre15[vari], axis=0),
-                                      np.nanmean(post15[vari], axis=0)],
-                                     axis=0))
-        # Standard deviation
-        standivs = np.ravel(np.stack([np.nanstd(pre15[vari], axis=0),
-                                      np.nanstd(post15[vari], axis=0)], axis=0))
-        topsd = np.add(meanplot, standivs)
-        minsd = np.subtract(meanplot, standivs)
-        
-        print('Paired t test', labeli, vari,
-              stats.ttest_rel(np.nanmean(pre15[vari], axis=0),
-                                        np.nanmean(post15[vari], axis=0),
-                                        nan_policy='omit'))
-        
-        ## Length of switch bar depends on values
-        barlen = (np.nanmin(minsd) - (np.nanmin(minsd) * 0.1),
-                  np.nanmax(topsd) + (np.nanmax(topsd) * 0.1))
-        ploti.vlines(15, barlen[0], barlen[1], colors='black')
-        
-        ploti.plot(meanplot)
-        ploti.fill_between(np.linspace(0,29,30), topsd, minsd, alpha=0.2)
-        
-        ploti.set_xticks(np.linspace(0, 30, 5),
-                         labels=[-15, 'before', 'switch', 'after', 15])
-        ploti.set_xlabel('trials')
-        ploti.set_ylabel(vari)
-    
-    plt.show()
-    plotnr += 1
     
     # Marzecová et al. (2019)
-    binlist = [post15, middle15, leftover, last15, pre15]
-    fig, axs = plt.subplots(nrows=2, ncols=2)
+    binlist = [post15, middle15, last15]
+    fig, axs = plt.subplots(nrows=2, ncols=3)
     fig.suptitle(labeli)
     for vari, ploti in zip(relVar, np.ravel(axs)):
         # Remove NaN
@@ -185,29 +133,17 @@ for datai, labeli in zip(dataList, plabels):
             plotbins.append(filtered_data)
         # ANOVA
         # -----
-        print('ANOVA', labeli, vari,
+        print('ANOVA', vari,
               stats.f_oneway(
                   plotbins[0],
                   plotbins[1],
-                  # plotbins[2],
-                  plotbins[3]
-                  # plotbins[4]
+                  plotbins[2]
                   )
               )
-        print('*** ANOVA last categories ***', labeli, vari,
-              stats.f_oneway(
-                  plotbins[2],
-                  plotbins[3],
-                  plotbins[4]
-                  )
-            )
         # Plot
         # ----
-        if vari == 'RT':
-            ##SG: RT has too much outliers to be clear as violin plot.
-            ploti.boxplot(plotbins, showfliers=False)
-        else:
-            ploti.violinplot(plotbins, showmeans=False, showmedians=True)
+        # ploti.boxplot(plotbins)
+        ploti.violinplot(plotbins, showmeans=False, showmedians=True)
         ploti.set_xticks(
             [y + 1 for y in range(len(binlist))],
             labels=binlabels
@@ -218,78 +154,39 @@ for datai, labeli in zip(dataList, plabels):
 
 
 
-#%% ~~ Model comparison ~~ %%#
-##############################
+#%% ~~ Trial position ~~ %%#
 
 
-RW_predictors = ['RPE_RW']
-hybrid_predictors = ['alpha_H', 'RPE_H']
-general_predictors = ['trial', 'targetLoc', 'correct']
+lag_relCueCol = all_data.relCueCol.eq(all_data.relCueCol.shift())
+switch_points = np.where(lag_relCueCol == False)[0]
+switch_points = np.append(switch_points, len(all_data))
 
-outcome_data = complete_data['RT']
-lm_data_RW = complete_data[general_predictors + RW_predictors]
-lm_data_RW = sm.add_constant(lm_data_RW)
-lm_data_hyb = complete_data[general_predictors + hybrid_predictors]
-lm_data_hyb = sm.add_constant(lm_data_hyb)
-
-mdl_RW = sm.OLS(outcome_data, lm_data_RW, missing='drop').fit()
-print(mdl_RW.summary())
-print('AIC RW', mdl_RW.aic)
-print('BIC RW', mdl_RW.bic)
-
-mdl_hyb = sm.OLS(outcome_data, lm_data_hyb, missing='drop').fit()
-print(mdl_hyb.summary())
-print('AIC Hybrid', mdl_hyb.aic)
-print('BIC Hybrid', mdl_hyb.bic)
-
-
-
-#%% ~~ RT-PE correlations ~~ %%#
-################################
-
-
-# Random parameter values
-pre_cors = np.zeros((npp, len(MDLS)))
-for _ in range(N_ITERS):
-    for ppi in range(npp):
-        ## Skip pp6 (not in data)
-        if ppi + 1 == 6:
-            continue
-        ## Use only data from pp
-        pp_data = un_data[un_data['id'] == ppi + 1]
-        pp_data.reset_index(drop=True, inplace=True)
-        ## Parameter values
-        thetas = [np.random.uniform(0, 1), np.random.uniform(0, 20)]
-        
-        # Add models' estimates
-        for loci, modeli in enumerate(MDLS):
-            pre_cors[ppi, loci] += bf.pp_negSpearCor(thetas, pp_data,
-                                                     model=modeli)
-pre_cors /= N_ITERS
-print('mean pre cor Daphne:', np.nanmean(pre_cors[:, 0]))
-print('mean pre cor Hugo:', np.nanmean(pre_cors[:, 1]))
-
-
-# 'Optimised' parameter values
-pp_cors = np.full((npp, len(MDLS)), np.nan)
-
-for ppi in range(npp):
-    ## Skip pp6 (not in data)
-    if ppi + 1 == 6:
-        continue
-    ## Use only data from pp
-    pp_data = un_data[un_data['id'] == ppi + 1]
-    pp_data.reset_index(drop=True, inplace=True)
-    ## Parameter values
-    thetas = [thetas_RW_soft.loc[ppi], thetas_H_soft.loc[ppi]]
+posList = []
+for starti, endi in af.pairwise(switch_points):
     
-    # Add models' estimates
-    for loci, modeli in enumerate(MDLS):
-        pp_cors[ppi, loci] = bf.pp_negSpearCor(thetas[loci], pp_data,
-                                               model=modeli)
+    nover = endi - starti - (2 * NBIN)
+    firstdata = all_data.loc[starti:(starti + NBIN - 1)]
+    firstdata['trial_pos'] = 'first'
+    firstdata.reset_index(drop=True, inplace=True)
+    
+    middledata = all_data.loc[(starti + NBIN):(starti + 2 * NBIN - 1)]
+    middledata['trial_pos'] = 'middle'
+    middledata.reset_index(drop=True, inplace=True)
+    
+    # temdata = pd.concat([firstdata, middledata], axis=1)
+    
+    if nover >= NBIN:
+        lastdata = all_data.loc[(endi - NBIN):(endi - 1)]
+    else:
+        lastdata = all_data.loc[(endi - nover):(endi - 1)]
+    lastdata['trial_pos'] = 'last'
+    lastdata.reset_index(drop=True, inplace=True)
+    
+    posList.append(pd.concat([firstdata, middledata, lastdata]))
+posdata = pd.concat(posList)
+posdata = posdata.reset_index(drop=True)
 
-print('mean cor Daphne:', np.nanmean(pp_cors[:, 0]))
-print('mean cor Hugo:', np.nanmean(pp_cors[:, 1]))
+
 
 
 
