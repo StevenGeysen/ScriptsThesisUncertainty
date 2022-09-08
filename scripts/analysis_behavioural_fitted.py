@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Analysis behavioural fitted -- Version 4
-Last edit:  2022/09/03
+"""     Analysis behavioural fitted -- Version 4.1
+Last edit:  2022/09/08
 Author(s):  Geysen, Steven (SG)
-Notes:      - Analysis of behavioural data after model fitting
+Notes:      - Analysis of behavioural data after model fitting (SoftMax models)
             - Release notes:
                 * Low-medium-high plot
                 * Model comparison
@@ -107,8 +107,13 @@ thetas_H_soft = pd.read_csv(RES_DIR / 'pp_NelderMead_10iters_softmax_H.csv',
 npp = un_data['id'].max()
 # Number of trials in bin
 NBIN = 15
+# Number of iterations
+N_ITERS = 10
 # Relevant variables
 relVar = ['RT', 'RPE_RW', 'RPE_H', 'alpha_H']
+# Models with free parameters
+# MDLS = ['RW', 'H', 'M']
+MDLS = ['RW', 'H']
 
 # Plot specs
 ## Plot number
@@ -159,6 +164,7 @@ high_data = complete_data[complete_data['gammaBlock'] < 0.8]
 dataList = [complete_data, low_data, high_data]
 
 for datai, labeli in zip(dataList, plabels):
+    print(labeli.center(20, '='))
     post15, middle15, leftover, last15, pre15 = af.bin_switch(
         datai, relVar, NBIN
         )
@@ -175,12 +181,18 @@ for datai, labeli in zip(dataList, plabels):
     for vari, ploti in zip(relVar, np.ravel(axs)):
         # Mean values
         meanplot = np.ravel(np.stack([np.nanmean(pre15[vari], axis=0),
-                                      np.nanmean(post15[vari], axis=0)], axis=0))
+                                      np.nanmean(post15[vari], axis=0)],
+                                     axis=0))
         # Standard deviation
         standivs = np.ravel(np.stack([np.nanstd(pre15[vari], axis=0),
                                       np.nanstd(post15[vari], axis=0)], axis=0))
         topsd = np.add(meanplot, standivs)
         minsd = np.subtract(meanplot, standivs)
+        
+        print('Paired t test', labeli, vari,
+              stats.ttest_rel(np.nanmean(pre15[vari], axis=0),
+                                        np.nanmean(post15[vari], axis=0),
+                                        nan_policy='omit'))
         
         ## Length of switch bar depends on values
         barlen = (np.nanmin(minsd) - (np.nanmin(minsd) * 0.1),
@@ -203,11 +215,32 @@ for datai, labeli in zip(dataList, plabels):
     fig, axs = plt.subplots(nrows=2, ncols=2)
     fig.suptitle(labeli)
     for vari, ploti in zip(relVar, np.ravel(axs)):
+        # Remove NaN
         plotbins = []
         for bini in binlist:
             data_1d = np.concatenate(bini[vari], axis=None)
             filtered_data = data_1d[~np.isnan(data_1d)]
             plotbins.append(filtered_data)
+        # ANOVA
+        # -----
+        print('ANOVA', labeli, vari,
+              stats.f_oneway(
+                  plotbins[0],
+                  plotbins[1],
+                  # plotbins[2],
+                  plotbins[3]
+                  # plotbins[4]
+                  )
+              )
+        print('*** ANOVA last categories ***', labeli, vari,
+              stats.f_oneway(
+                  plotbins[2],
+                  plotbins[3],
+                  plotbins[4]
+                  )
+            )
+        # Plot
+        # ----
         if vari == 'RT':
             ##SG: RT has too much outliers to be clear as violin plot.
             ploti.boxplot(plotbins, showfliers=False)
@@ -227,17 +260,9 @@ for datai, labeli in zip(dataList, plabels):
 ##############################
 
 
-# RW_predictors = ['prob_RW', 'RPE_RW', 'Qest_0_RW', 'Qest_1_RW']
-RW_predictors = ['RPE_RW', 'Qest_0_RW', 'Qest_1_RW']
-# hybrid_predictors = ['prob_H', 'alpha_H', 'RPE_H', 'Qest_0_H', 'Qest_1_H']
-hybrid_predictors = ['alpha_H', 'RPE_H', 'Qest_0_H', 'Qest_1_H']
-# general_predictors = [
-#     'block', 'trial', 'relCue', 'irrelCue', 'validity', 'targetLoc',
-#     'relCueCol', 'gammaBlock', 'correct'
-#     ]
-general_predictors = [
-    'trial', 'validity', 'targetLoc', 'gammaBlock', 'correct'
-    ]
+RW_predictors = ['RPE_RW']
+hybrid_predictors = ['alpha_H', 'RPE_H']
+general_predictors = ['trial', 'targetLoc', 'correct']
 
 outcome_data = complete_data['RT']
 lm_data_RW = complete_data[general_predictors + RW_predictors]
@@ -254,6 +279,55 @@ mdl_hyb = sm.OLS(outcome_data, lm_data_hyb, missing='drop').fit()
 print(mdl_hyb.summary())
 print('AIC Hybrid', mdl_hyb.aic)
 print('BIC Hybrid', mdl_hyb.bic)
+
+
+
+#%% ~~ RT-PE correlations ~~ %%#
+################################
+
+
+# Random parameter values
+pre_cors = np.zeros((npp, len(MDLS)))
+for _ in range(N_ITERS):
+    for ppi in range(npp):
+        ## Skip pp6 (not in data)
+        if ppi + 1 == 6:
+            continue
+        ## Use only data from pp
+        pp_data = un_data[un_data['id'] == ppi + 1]
+        pp_data.reset_index(drop=True, inplace=True)
+        ## Parameter values
+        thetas = [np.random.uniform(0, 1), np.random.uniform(0, 20)]
+        
+        # Add models' estimates
+        for loci, modeli in enumerate(MDLS):
+            pre_cors[ppi, loci] += bf.pp_negSpearCor(thetas, pp_data,
+                                                     model=modeli)
+pre_cors /= N_ITERS
+print('mean pre cor Daphne:', np.nanmean(pre_cors[:, 0]))
+print('mean pre cor Hugo:', np.nanmean(pre_cors[:, 1]))
+
+
+# 'Optimised' parameter values
+pp_cors = np.full((npp, len(MDLS)), np.nan)
+
+for ppi in range(npp):
+    ## Skip pp6 (not in data)
+    if ppi + 1 == 6:
+        continue
+    ## Use only data from pp
+    pp_data = un_data[un_data['id'] == ppi + 1]
+    pp_data.reset_index(drop=True, inplace=True)
+    ## Parameter values
+    thetas = [thetas_RW_soft.loc[ppi], thetas_H_soft.loc[ppi]]
+    
+    # Add models' estimates
+    for loci, modeli in enumerate(MDLS):
+        pp_cors[ppi, loci] = bf.pp_negSpearCor(thetas[loci], pp_data,
+                                               model=modeli)
+
+print('mean cor Daphne:', np.nanmean(pp_cors[:, 0]))
+print('mean cor Hugo:', np.nanmean(pp_cors[:, 1]))
 
 
 
