@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Analysis simulations: Softmax -- Version 4.1
-Last edit:  2022/09/01
+"""     Analysis simulations: Softmax -- Version 4.2.1
+Last edit:  2022/09/07
 Author(s):  Geysen, Steven (SG)
 Notes:      - Analysis of simulated data of the task used by
                 Marzecova et al. (2019)
             - Release notes:
-                * Smaller parameter range
+                * Accuracy
+                * Optimal values Nelder-Mead
                 
 To do:      - Nelder-Mead
             - Explore models
@@ -42,22 +43,28 @@ from scipy import optimize, stats
 SPINE = Path.cwd().parent
 OUT_DIR = SPINE / 'results'
 SIM_DIR = OUT_DIR / 'simulations/softmax'
-
+OPT_DIR = SIM_DIR / 'optimal'
+if not Path.exists(OPT_DIR):
+    Path.mkdir(OPT_DIR)
 
 
 #%% ~~ Variables ~~ %%#
 
 
 # Filenames of simulated data
-simList = [filei.name for filei in Path.iterdir(SIM_DIR)]
+simList = [filei.name for filei in Path.iterdir(SIM_DIR)
+           if filei.name.endswith('csv')]
 simList = simList[:20]  ##SG: First few to test everything quickly.
 # Experimental structure
 exStruc = pd.read_csv(SIM_DIR / simList[0], index_col='Unnamed: 0')
 
-# Number of iterations
-N_ITERS = 10
+ALL_MDLS = ['RW', 'H', 'W', 'R']
 # Models with optimiseable parameters
 MDLS = ['RW', 'H']
+# Number of iterations
+N_ITERS = 50
+# Number of simulations
+N_SIMS = 100
 # Number of trials in bin
 binsize = 15
 
@@ -87,6 +94,7 @@ switches = np.where(lag_relCueCol == False)[0]
 #--------------------------#
 
 
+fitStruc = sf.sim_experiment()
 OptimalThetas = np.full((2, 2), np.nan)
 negCors = np.zeros((len(alpha_options), len(beta_options), len(MDLS)))
 
@@ -95,7 +103,7 @@ for iti in range(N_ITERS):
         for locb, betai in enumerate(beta_options):
             for locm, modeli in enumerate(MDLS):
                 negCors[loca, locb, locm] += sf.sim_negSpearCor((alphai, betai),
-                                                                exStruc,
+                                                                fitStruc,
                                                                 model=modeli)
 negCors /= N_ITERS
 # Optimal values
@@ -105,7 +113,6 @@ for locm, modeli in enumerate(MDLS):
     OptimalThetas[locm, :] = [alpha_options[toploc[0]],
                               beta_options[toploc[1]]]
     
-    plt.figure(plotnr)
     fig, ax = plt.subplots()
     im, _ = pf.heatmap(np.rot90(negCors[:, :, locm]), np.round(plotbetas, 3),
                 np.round(alpha_options, 3), ax=ax,
@@ -115,6 +122,49 @@ for locm, modeli in enumerate(MDLS):
     plt.suptitle(f'Negative Spearman Correlation: Optimal values {modeli}')
     plt.show()
     plotnr += 1
+
+title = f'sim_gridsearch_{N_ITERS}iters_softmax_optimal.csv'
+pd.DataFrame(OptimalThetas, columns=MDLS).to_csv(OUT_DIR / 'simulations' / title)
+
+
+
+#%% ~~ Nelder - Mead ~~ %%#
+
+
+initial_guess = np.full((N_ITERS, 2), np.nan)
+nmThetas = np.zeros((len(MDLS), 2))
+
+start_total = time.time()
+for iti in range(N_ITERS):
+    start_iti = time.time()
+    initial_guess[iti, :] = (np.random.choice(alpha_options),
+                             np.random.choice(beta_options))
+    for locm, modeli in enumerate(MDLS):
+        nmThetas[locm, :] += optimize.fmin(
+            sf.sim_negSpearCor, initial_guess[iti, :],
+            args=(fitStruc, modeli), ftol=0.001)
+    print(f'Duration {iti}: {round((time.time() - start_iti) / 60, 2)} minutes')
+print(f'Duration total: {round((time.time() - start_total) / 60, 2)} minutes')
+
+nmThetas /= N_ITERS
+# Save optimal values
+title = f'sim_NelderMead_{N_ITERS}iters_softmax_optimal.csv'
+pd.DataFrame(nmThetas, columns=MDLS).to_csv(OUT_DIR / 'simulations' / title)
+
+
+
+#%% ~~ Optimal simulations ~~ %%#
+
+
+for simi in range(N_SIMS):
+    Daphne = sf.simRW_1c(OptimalThetas[0, :], fitStruc)
+    Hugo = sf.simHybrid_1c(OptimalThetas[1, :], Daphne)
+    Wilhelm = sf.simWSLS(Hugo)
+    Renee = sf.simRandom(Wilhelm)
+    Renee.to_csv(OPT_DIR / f'sim{simi}_softmax_optimal.csv')
+    
+    # pf.selplot(Renee, 'rw', plotnr, thetas=(alphai, beta), pp=simi)
+    # plotnr += 1
 
 
 
@@ -283,7 +333,7 @@ for simi, filei in enumerate(simList):
             nmThetas[simi, locm, :] += optimize.fmin(
                 sf.sim_negSpearCor, initial_guess[simi, iti, :],
                 args=(simData, modeli), ftol=0.001)
-    print(f'Duration pp {simi}: {round((time.time() - start_sim) / 60, 2)} minutes')
+    print(f'Duration sim {simi}: {round((time.time() - start_sim) / 60, 2)} minutes')
 print(f'Duration total: {round((time.time() - start_total) / 60, 2)} minutes')
 
 nmThetas /= N_ITERS
@@ -309,6 +359,40 @@ plt.legend()
 
 plt.show()
 plotnr += 1
+
+
+
+#%% ~~ Accuracy ~~ %%#
+######################
+
+
+OptimalThetas = np.full((2, 2), np.nan)
+model_acc = np.zeros((len(alpha_options), len(beta_options), len(ALL_MDLS)))
+
+for iti in range(N_ITERS):
+    for loca, alphai in enumerate(alpha_options):
+        for locb, betai in enumerate(beta_options):
+            for locm, modeli in enumerate(ALL_MDLS):
+                model_acc[loca, locb, locm] += sf.sim_accuracy((alphai, betai),
+                                                               exStruc,
+                                                               model=modeli)
+model_acc /= N_ITERS
+# Optimal values
+for locm, modeli in enumerate(MDLS):
+    toploc = [i[0] for i in np.where(
+        model_acc[:, :, locm] == np.min(model_acc[:, :, locm]))]
+    OptimalThetas[locm, :] = [alpha_options[toploc[0]],
+                              beta_options[toploc[1]]]
+    
+    fig, ax = plt.subplots()
+    im, _ = pf.heatmap(np.rot90(model_acc[:, :, locm]), np.round(plotbetas, 3),
+                np.round(alpha_options, 3), ax=ax,
+                row_name='$\u03B2$', col_name='$\u03B1$',
+                cbarlabel='Accuracy')
+    
+    plt.suptitle(f'Accuracy: Optimal values {modeli}')
+    plt.show()
+    plotnr += 1
 
 
 
