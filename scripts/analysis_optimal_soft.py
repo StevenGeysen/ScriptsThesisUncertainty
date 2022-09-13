@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Analysis optimal SoftMax -- Version 2
-Last edit:  2022/09/08
+"""     Analysis optimal SoftMax -- Version 2.1
+Last edit:  2022/09/13
 Author(s):  Geysen, Steven (SG)
 Notes:      - Analysis of data simulated with optimal parameter values
                 according to grid search(SoftMax models)
@@ -17,6 +17,7 @@ Comments:
 Sources:    List of arrays to matrix ( https://stackoverflow.com/a/48456883 )
             https://gist.github.com/jcheong0428/f25b47405d9d328691c102787bc92175#file-lmer-in-python-ipynb
             https://www.statology.org/aic-in-python/
+            https://www.pythonfordatascience.org/anova-python/
 """
 
 
@@ -38,6 +39,7 @@ from pathlib import Path
 from scipy import optimize, stats
 
 from sklearn.linear_model import LinearRegression
+from statsmodels.formula.api import ols
 
 
 # Directories
@@ -67,8 +69,8 @@ all_data = pd.concat(dataList, ignore_index=True)
 # Experimental structure
 exStruc = pd.read_csv(DATA_DIR / simList[0], index_col='Unnamed: 0')
 # Parameter values
-thetas = pd.read_csv(SIM_DIR / 'sim_gridsearch_50iters_softmax_optimal.csv',
-                     index_col='Unnamed: 0')
+thetas = np.genfromtxt(SIM_DIR / 'sim_gridsearch_50iters_softmax_optimal.csv',
+                       skip_header=1, delimiter=',')[:, 1:]
 
 # Number of trials in bin
 NBIN = 15
@@ -99,7 +101,7 @@ binlabels = ['First 15', 'Middle 15', 'Last']
 
 
 # Learning curve
-pf.learning_curve(simList, DATA_DIR, plotnr, wsls=True)
+pf.learning_curve(simList, DATA_DIR, plotnr)
 plotnr += 1
 for modeli in ['RW', 'H', 'W', 'R']:
     print(sum(all_data['relCue'] == all_data[f'selCue_{modeli}']) / len(all_data))
@@ -116,7 +118,7 @@ plotnr += 1
 
 for labeli in plabels:
     print(f' {labeli} UUn '.center(20, '='))
-    post15, middle15, _, last15, pre15 = sf.var_bin_switch(
+    post15, middle15, _, last15, _ = sf.var_bin_switch(
         simList, DATA_DIR, relVar, NBIN, labeli
         )
     
@@ -188,6 +190,47 @@ posdata = posdata.reset_index(drop=True)
 
 
 
+#%%
+
+outcome_vars = ['rt_RW', 'RPE_RW', 'rt_H', 'RPE_H']
+for outcomei in outcome_vars:
+    print(f' {outcomei} '.center(20, '='))
+    Lmdl = ols(
+        f'{outcomei} ~ validity * gammaBlock * C(trial_pos, Treatment)',
+        data=posdata
+        ).fit()
+    # print(Lmdl.summary())
+    table = sm.stats.anova_lm(Lmdl, typ=3)
+    print(table)
+
+detailmdl = ols(
+    'rt_H ~ validity * gammaBlock * C(trial_pos, Treatment)',
+    data=posdata
+    ).fit()
+datailsum = detailmdl.summary()
+# print(datailsum)
+detable = sm.stats.anova_lm(detailmdl, typ=3)
+print(detable)
+
+
+
+#%% ~~ RT-PE correlations ~~ %%#
+################################
+
+
+# 'Optimised' parameter values
+simcors = np.full((nsims, len(MDLS)), np.nan)
+
+for simi, filei in enumerate(simList):
+    simdata = pd.read_csv(DATA_DIR / filei, index_col='Unnamed: 0')
+    
+    # Add models' estimates
+    for loci, modeli in enumerate(MDLS):
+        simcors[simi, loci] = sf.sim_negSpearCor(thetas[loci, :], simdata,
+                                                 model=modeli)
+
+print('mean cor Daphne:', np.nanmean(simcors[:, 0]))
+print('mean cor Hugo:', np.nanmean(simcors[:, 1]))
 
 
 # ------------------------------------------------------------------------ End

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Analysis behavioural fitted -- Version 4.1
-Last edit:  2022/09/08
+"""     Analysis behavioural fitted -- Version 4.2
+Last edit:  2022/09/13
 Author(s):  Geysen, Steven (SG)
 Notes:      - Analysis of behavioural data after model fitting (SoftMax models)
             - Release notes:
@@ -11,6 +11,7 @@ Notes:      - Analysis of behavioural data after model fitting (SoftMax models)
                     - BIC
                 
 To do:      - Model comparison
+            - Sliding average window pre-post switch
             
 Questions:  
             
@@ -67,6 +68,7 @@ import pandas as pd
 
 import fns.assisting_functions as af
 import fns.behavioural_functions as bf
+import fns.plot_functions as pf
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
@@ -75,6 +77,7 @@ from pathlib import Path
 from scipy import optimize, stats
 
 from sklearn.linear_model import LinearRegression
+from statsmodels.formula.api import ols
 
 
 # Directories
@@ -119,8 +122,8 @@ MDLS = ['RW', 'H']
 ## Plot number
 plotnr = 0
 ## Plot labels
-plabels = ['All data', 'Low UUn', 'High UUn']
-binlabels = ['First 15', 'Middle 15', 'Leftover', 'Last', 'Last 15']
+plabels = ['All data', 'Low', 'High']
+binlabels = ['First 15', 'Middle 15', 'Last']
 
 
 
@@ -148,6 +151,21 @@ for ppi in range(npp):
     
     dataList.append(Renee)
 
+    plt.figure(plotnr)
+    title = 'Cue selection {ppi}'
+    ## True cue
+    plt.plot(Renee[['relCueCol']], label='True cue', linestyle='-.')
+    ## Selected cue
+    for i, modeli in enumerate(MDLS):
+        plt.plot((Renee[[f'selCue_{modeli}']] - (1+i)/10), label=f'Sel {modeli}')
+    
+    plt.title(title)
+    plt.xlabel('trials')
+    plt.legend()
+    
+    plt.show()
+    plotnr += 1
+
 # One data frame
 complete_data = pd.concat(dataList, ignore_index=True)
 
@@ -157,6 +175,8 @@ complete_data = pd.concat(dataList, ignore_index=True)
 #########################
 
 
+# Pre-Post switch
+
 # Separate data sets for convenience
 low_data = complete_data[complete_data['gammaBlock'] >= 0.8]
 high_data = complete_data[complete_data['gammaBlock'] < 0.8]
@@ -165,13 +185,13 @@ dataList = [complete_data, low_data, high_data]
 
 for datai, labeli in zip(dataList, plabels):
     print(labeli.center(20, '='))
-    post15, middle15, leftover, last15, pre15 = af.bin_switch(
+    post15, _, _, _, pre15 = bf.bin_switch(
         datai, relVar, NBIN
         )
     # List of arrays to matrix
     ##SG: Works only if input arrays have the same shape (not always the case
         # with leftover and last15).
-    for bini in [post15, middle15, pre15]:
+    for bini in [post15, pre15]:
         for vari in relVar:
             bini[vari] = np.stack(bini[vari], axis=0)
     
@@ -209,9 +229,33 @@ for datai, labeli in zip(dataList, plabels):
     
     plt.show()
     plotnr += 1
+
+
+
+#%% ~~ Accuracy ~~ %%#
+#--------------------#
+
+
+for modeli in ['RW', 'H', 'W', 'R']:
+    print(
+        sum(complete_data['relCue'] == complete_data[f'selCue_{modeli}']) /\
+            len(complete_data)
+        )
+
+
+
+#%% ~~ Validity effect ~~ %%#
+#---------------------------#
+
+
+for labeli in plabels:
+    print(f' {labeli} UUn '.center(20, '='))
+    post15, middle15, _, last15, _ = bf.var_bin_switch(
+        complete_data, relVar, NBIN, labeli
+        )
     
     # Marzecová et al. (2019)
-    binlist = [post15, middle15, leftover, last15, pre15]
+    binlist = [post15, middle15, last15]
     fig, axs = plt.subplots(nrows=2, ncols=2)
     fig.suptitle(labeli)
     for vari, ploti in zip(relVar, np.ravel(axs)):
@@ -221,24 +265,16 @@ for datai, labeli in zip(dataList, plabels):
             data_1d = np.concatenate(bini[vari], axis=None)
             filtered_data = data_1d[~np.isnan(data_1d)]
             plotbins.append(filtered_data)
+        
         # ANOVA
         # -----
-        print('ANOVA', labeli, vari,
+        print('ANOVA', vari,
               stats.f_oneway(
                   plotbins[0],
                   plotbins[1],
-                  # plotbins[2],
-                  plotbins[3]
-                  # plotbins[4]
+                  plotbins[2]
                   )
               )
-        print('*** ANOVA last categories ***', labeli, vari,
-              stats.f_oneway(
-                  plotbins[2],
-                  plotbins[3],
-                  plotbins[4]
-                  )
-            )
         # Plot
         # ----
         if vari == 'RT':
@@ -253,6 +289,92 @@ for datai, labeli in zip(dataList, plabels):
         ploti.set_ylabel(vari)
     plt.show()
     plotnr += 1
+
+
+
+#%% ~~ Trial position ~~ %%#
+
+
+lag_relCueCol = complete_data.relCueCol.eq(complete_data.relCueCol.shift())
+switch_points = np.where(lag_relCueCol == False)[0]
+switch_points = np.append(switch_points, len(complete_data))
+
+posList = []
+for starti, endi in af.pairwise(switch_points):
+    
+    nover = endi - starti - (2 * NBIN)
+    firstdata = complete_data.loc[starti:(starti + NBIN - 1)]
+    firstdata['trial_pos'] = 'first'
+    firstdata.reset_index(drop=True, inplace=True)
+    
+    middledata = complete_data.loc[(starti + NBIN):(starti + 2 * NBIN - 1)]
+    middledata['trial_pos'] = 'middle'
+    middledata.reset_index(drop=True, inplace=True)
+    
+    # temdata = pd.concat([firstdata, middledata], axis=1)
+    
+    if nover >= NBIN:
+        lastdata = complete_data.loc[(endi - NBIN):(endi - 1)]
+    else:
+        lastdata = complete_data.loc[(endi - nover):(endi - 1)]
+    lastdata['trial_pos'] = 'last'
+    lastdata.reset_index(drop=True, inplace=True)
+    
+    posList.append(pd.concat([firstdata, middledata, lastdata]))
+posdata = pd.concat(posList)
+posdata = posdata.reset_index(drop=True)
+
+
+#%%
+
+
+outcome_vars = ['RPE_RW', 'RPE_H', 'alpha_H']
+for outcomei in outcome_vars:
+    print(f' {outcomei} '.center(20, '='))
+    Lmdl = ols(
+        f'{outcomei} ~ validity * gammaBlock * C(trial_pos, Treatment)',
+        data=posdata
+        ).fit()
+    # print(Lmdl.summary())
+    table = sm.stats.anova_lm(Lmdl, typ=3)
+    print(table)
+
+predictors = ['RPE_RW', 'RPE_H', 'alpha_H']
+for predi in predictors:
+    print(f' {predi} '.center(20, '='))
+    Lmdl = ols(
+        f'RT ~ validity * gammaBlock * {predi} * C(trial_pos, Treatment)',
+        data=posdata
+        ).fit()
+    # print(Lmdl.summary())
+    table = sm.stats.anova_lm(Lmdl, typ=3)
+    print(table)
+
+detailmdl = ols(
+    # 'RT ~ validity * gammaBlock * RPE_RW * C(trial_pos, Treatment)',
+    # 'RT ~ validity * gammaBlock * C(trial_pos, Treatment)',
+    # 'RPE_RW ~ validity * gammaBlock * C(trial_pos, Treatment)',
+    'RPE_H ~ validity * gammaBlock * C(trial_pos, Treatment)',
+    data=posdata
+    ).fit()
+datailsum = detailmdl.summary()
+# print(datailsum)
+detable = sm.stats.anova_lm(detailmdl, typ=3)
+print(detable)
+
+
+detailmdl = ols(
+    # 'RT ~ RPE_RW',
+    # 'RT ~ RPE_H',
+    'RT ~ alpha_H',
+    data=complete_data
+    ).fit()
+datailsum = detailmdl.summary()
+print(detailmdl.aic)
+print(detailmdl.bic)
+# print(datailsum)
+detable = sm.stats.anova_lm(detailmdl, typ=3)
+print(detable)
 
 
 
