@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Simulation functions -- Version 4
-Last edit:  2022/09/08
+"""     Simulation functions -- Version 4.1
+Last edit:  2022/09/13
 Author(s):  Geysen, Steven (SG)
 Notes:      - Functions used for the simulation of the task used by
                 Marzecova et al. (2019). Both structure and models.
@@ -16,8 +16,7 @@ Notes:      - Functions used for the simulation of the task used by
                 * Accuracy
                 * var_bin_switch
             - Release notes:
-                * Added gammaBlock to experimental structure
-                * var_bin_switch
+                * Changed reward calculations
             
 To do:      - Meta learner
             
@@ -249,8 +248,10 @@ def simRW_1c(parameters, data, asm='soft'):
             2. 'rt_RW' - response time
             3. 'reward_RW' - reward based on cue selected by Rescorla-Wagner
             4. 'RPE_RW' - reward prediction error
-            5. 'Qest_0_RW' - estimated value of cue 0
-            6. 'Qest_1_RW' - estimated value of cue 1
+            5. 'Men_PE_RW' - Prediction error calculated as in
+                Mengotti et al. (2017)
+            6. 'Qest_0_RW' - estimated value of cue 0
+            7. 'Qest_1_RW' - estimated value of cue 1
     """
 
     # Variables
@@ -258,7 +259,7 @@ def simRW_1c(parameters, data, asm='soft'):
     # Dataframe
     var_list = [
         'selCue_RW', 'prob_RW', 'rt_RW', 'reward_RW',
-        'RPE_RW', 'Qest_0_RW', 'Qest_1_RW'
+        'RPE_RW', 'Men_PE_RW', 'Qest_0_RW', 'Qest_1_RW'
         ]
     simDict = {vari:[] for vari in var_list}
     
@@ -269,6 +270,8 @@ def simRW_1c(parameters, data, asm='soft'):
     # Model
     ## Estimated value of cue
     Q_est = np.full((n_trials, N_CUES), 1/N_CUES)
+    ## Outcomes
+    outcomes = np.full((2, ), np.nan)
     
     # Policy
     ## Selected cue
@@ -299,9 +302,14 @@ def simRW_1c(parameters, data, asm='soft'):
         # Reward
         # ------
         ## Based on validity
-        ##AM: If cue==target reward = 1, if cue!=target reward = 0
-        reward = int(selcue == trial.targetLoc)
+        ##AM: If cue==target reward = 1, if cue!=target reward = 
+        outcomes[int(trial.relCueCol)] = trial.relCue == trial.targetLoc
+        outcomes[int(1 - trial.relCueCol)] = trial.irrelCue == trial.targetLoc
+        reward = int(outcomes[selcue])
         simDict['reward_RW'].append(reward)
+        
+        
+        
         
         # Update rule (RW)
         # ----------------
@@ -317,6 +325,9 @@ def simRW_1c(parameters, data, asm='soft'):
         ## Update cue estimate of selected stimulus in current trial
         Q_est[triali, selcue] = Q_est[triali, selcue] + alpha * rpe
         simDict['RPE_RW'].append(rpe)
+        simDict['Men_PE_RW'].append(
+            1 - reward + Q_est[triali - 1, selcue] * (2 * reward - 1)
+            )
         for qi, q_est in enumerate(Q_est[triali, :]):
             simDict[f'Qest_{qi}_RW'].append(q_est)
         
@@ -380,6 +391,8 @@ def simHybrid_1c(parameters, data, salpha=0.01, asm='soft'):
     alpha = np.full((n_trials, N_CUES), salpha)
     ## Estimated value of cue
     Q_est = np.full((n_trials, N_CUES), 1/N_CUES)
+    ## Outcomes
+    outcomes = np.full((2, ), np.nan)
     
     # Policy
     ## Selected cue
@@ -411,7 +424,9 @@ def simHybrid_1c(parameters, data, salpha=0.01, asm='soft'):
         # ------
         ## Based on validity
         ##AM: If cue==target reward = 1, if cue!=target reward = 0
-        reward = int(selcue == trial.targetLoc)
+        outcomes[int(trial.relCueCol)] = trial.relCue == trial.targetLoc
+        outcomes[int(1 - trial.relCueCol)] = trial.irrelCue == trial.targetLoc
+        reward = int(outcomes[selcue])
         simDict['reward_H'].append(reward)
         
         # Hybrid
@@ -496,6 +511,8 @@ def simMeta_1c(parameters, data, asm='soft'):
     # Model
     ## Estimated value of cue
     Q_est = np.full((n_trials, N_CUES), 1/N_CUES)
+    ## Outcomes
+    outcomes = np.full((2, ), np.nan)
     ## Estimate of expected uncertainty calculated from the history of URPEs
     eun = np.full((n_trials, ), 1/N_CUES)
     ## Unexpected uncertainty
@@ -531,7 +548,9 @@ def simMeta_1c(parameters, data, asm='soft'):
         # ------
         ## Based on validity
         ##AM: If cue==target reward = 1, if cue!=target reward = 0
-        reward = int(selcue == trial.targetLoc)
+        outcomes[int(trial.relCueCol)] = trial.relCue == trial.targetLoc
+        outcomes[int(1 - trial.relCueCol)] = trial.irrelCue == trial.targetLoc
+        reward = int(outcomes[selcue])
         simDict['reward_M'].append(reward)
         
         # Update rule
@@ -617,6 +636,8 @@ def simRW_2c(parameters, data, asm='soft'):
     # Model
     ## Estimated value of cue
     Q_est = np.full((n_trials, N_CUES), 1/N_CUES)
+    ## Outcomes
+    outcomes = np.full((2, ), np.nan)
     
     # Policy
     ## Selected cue
@@ -648,7 +669,9 @@ def simRW_2c(parameters, data, asm='soft'):
         # ------
         ## Based on validity
         ##AM: If cue==target reward = 1, if cue!=target reward = 0
-        reward = int(selcue == trial.targetLoc)
+        outcomes[int(trial.relCueCol)] = trial.relCue == trial.targetLoc
+        outcomes[int(1 - trial.relCueCol)] = trial.irrelCue == trial.targetLoc
+        reward = int(outcomes[selcue])
         simDict['reward_RW2'].append(reward)
         
         # Update rule (RW)
@@ -731,6 +754,8 @@ def simHybrid_2c(parameters, data, salpha=0.01, asm='soft'):
     alpha = np.full((n_trials, N_CUES), salpha)
     ## Estimated value of cue
     Q_est = np.full((n_trials, N_CUES), 1/N_CUES)
+    ## Outcomes
+    outcomes = np.full((2, ), np.nan)
     
     # Policy
     ## Selected cue
@@ -762,7 +787,9 @@ def simHybrid_2c(parameters, data, salpha=0.01, asm='soft'):
         # ------
         ## Based on validity
         ##AM: If cue==target reward = 1, if cue!=target reward = 0
-        reward = int(selcue == trial.targetLoc)
+        outcomes[int(trial.relCueCol)] = trial.relCue == trial.targetLoc
+        outcomes[int(1 - trial.relCueCol)] = trial.irrelCue == trial.targetLoc
+        reward = int(outcomes[selcue])
         simDict['reward_H2'].append(reward)
         
         # Hybrid
@@ -836,6 +863,8 @@ def simWSLS(data):
     n_trials = data.shape[0]
     ## Number of cues
     N_CUES = 2
+    ## Outcomes
+    outcomes = np.full((2, ), np.nan)
     ## Reward
     reward = np.nan
     ## Selected cues
@@ -856,7 +885,9 @@ def simWSLS(data):
         # Reward calculations
         ## Based on validity
         ##AM: If cue==target reward = 1, if cue!=target reward = 0
-        reward = int(selcues[triali] == trial.targetLoc)
+        outcomes[int(trial.relCueCol)] = trial.relCue == trial.targetLoc
+        outcomes[int(1 - trial.relCueCol)] = trial.irrelCue == trial.targetLoc
+        reward = int(outcomes[int(selcues[triali])])
         
         simDict['selCue_W'].append(selcues[triali])
         ##SG: If there is some uncertainty in which cue Wilhelm will pick,
@@ -895,13 +926,17 @@ def simRandom(data):
     
     # Number of cues
     N_CUES = 2
+    ## Outcomes
+    outcomes = np.full((2, ), np.nan)
 
     # Trial loop
     for triali, trial in data.iterrows():
         selcue = np.random.randint(N_CUES)
         simDict['selCue_R'].append(selcue)
         simDict['prob_R'].append(0.5)
-        reward = int(selcue == trial.targetLoc)
+        outcomes[int(trial.relCueCol)] = trial.relCue == trial.targetLoc
+        outcomes[int(1 - trial.relCueCol)] = trial.irrelCue == trial.targetLoc
+        reward = int(outcomes[selcue])
         simDict['reward_R'].append(reward)
 
     return af.save_data(simDict, data, var_list)
