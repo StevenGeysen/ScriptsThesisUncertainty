@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Plot functions -- Version 3.2
-Last edit:  2022/08/24
+"""     Plot functions -- Version 3.3
+Last edit:  2022/09/13
 Author(s):  Geysen, Steven (SG)
 Notes:      - Functions used to plot output
                 * Sanity checks
@@ -13,7 +13,7 @@ Notes:      - Functions used to plot output
                 * Stay behaviour
                 * Heatmaps
             - Release notes:
-                * Implement Michelle
+                * Corrected learning curve
             
 To do:      - Add functions of other often used plots
             - Make plots work with participant data
@@ -289,16 +289,20 @@ def learning_curve(dataList, datadir, plotnr, wsls=False):
         
         # For each trial, is the predicitive cue selected,
         for triali, trial in data.iterrows():
-            correct_Daphne = trial.relCueCol == trial.selCue_RW
+            correct_Daphne = trial.relCue == trial.selCue_RW
+            # correct_Daphne = trial.relCueCol == trial.selCue_RW
             DaphneList.append(correct_Daphne > 0.5)
             
-            correct_Hugo = trial.relCueCol == trial.selCue_H
+            correct_Hugo = trial.relCue == trial.selCue_H
+            # correct_Hugo = trial.relCueCol == trial.selCue_H
             HugoList.append(correct_Hugo > 0.5)
                 
-            correct_Wilhelm = trial.relCueCol == trial.selCue_W
+            correct_Wilhelm = trial.relCue == trial.selCue_W
+            # correct_Wilhelm = trial.relCueCol == trial.selCue_W
             WilhelmList.append(correct_Wilhelm > 0.5)
             
-            correct_Renee = trial.relCueCol == trial.selCue_R
+            correct_Renee = trial.relCue == trial.selCue_R
+            # correct_Renee = trial.relCueCol == trial.selCue_R
             ReneeList.append(correct_Renee > 0.5)
             
         LCmatrix[0, :, filei] = DaphneList
