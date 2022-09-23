@@ -302,15 +302,29 @@ def simRW_1c(parameters, data, asm='soft'):
         # Reward
         # ------
         ## Based on validity
-        ##AM: If cue==target reward = 1, if cue!=target reward = 
+        ##AM: If cue==target reward = 1, if cue!=target reward = 0
+        """
+        the model chooses the relevant cue color (1 - white, 2 - black), but
+        you need to also know the direction of the cue (1 - left,  2- right).
+        The direction of the cue is in the column relCue or irrelCue, but the
+        relCue or irrelCue refer to the gorund thruth and not to what the model
+        chooses (selCue). RelCue and irrelCue don’t give you the information
+        about which color is the relevant Cue currently, this information is in
+        the relCueCol (1-white 2 -black). So, it would be easier to recode the
+        data from the perspective of whiteCue and blackCue: if white cue is
+        relevant, you would put the value for relCue direction in the column
+        for white cue, while you would put the value for direction of the
+        irelCue for the black cue.
+        """
+        
         outcomes[int(trial.relCueCol)] = trial.relCue == trial.targetLoc
         outcomes[int(1 - trial.relCueCol)] = trial.irrelCue == trial.targetLoc
         reward = int(outcomes[selcue])
         simDict['reward_RW'].append(reward)
-        
-        
-        
-        
+        print('***', trial.relCueCol)
+        print(trial.relCue, trial.irrelCue)
+        print(trial.targetLoc)
+        print(selcue, reward)
         # Update rule (RW)
         # ----------------
         if triali == 0:
