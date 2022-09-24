@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Simulation functions -- Version 4.1
-Last edit:  2022/09/13
+"""     Simulation functions -- Version 4.2
+Last edit:  2022/09/24
 Author(s):  Geysen, Steven (SG)
 Notes:      - Functions used for the simulation of the task used by
                 Marzecova et al. (2019). Both structure and models.
@@ -17,6 +17,9 @@ Notes:      - Functions used for the simulation of the task used by
                 * var_bin_switch
             - Release notes:
                 * Changed reward calculations
+                * Target in sim_experiment changed
+                * Valitdity corrected
+                * Negative correlation with absolute values
             
 To do:      - Meta learner
             
@@ -137,19 +140,20 @@ def sim_experiment(simnr=1, ntrials=640, nswitch=7):
         # Stimuli
         stim = np.random.choice(n_stim, n_stim, p =  [0.5, 0.5])
         
-        dataDict['relCue'].append(stim[relCueCol])
-        dataDict['irrelCue'].append(stim[1 - relCueCol])
+        relcue = stim[relCueCol]
+        irrelcue = stim[1 - relCueCol]
+        dataDict['relCue'].append(relcue)
+        dataDict['irrelCue'].append(irrelcue)
         
         ##SG: Target is 'randomly' selected between 0 and 1 with the
-            # probability of the relevant cue. relCueCol- is to not always
-            # have 0 with the highest probability. abs() to prevent the
-            # target from being -1.
-        target = abs(relCueCol - np.random.choice(
-            n_stim, p=[prob[stim[relCueCol]], 1 - prob[stim[relCueCol]]]))
+            # probability of the relevant cue.
+        target = np.random.choice(
+            [relcue, 1 - relcue], p = [prob[relCueCol], 1 -  prob[relCueCol]]
+            )
         dataDict['targetLoc'].append(target)
         ##SG: Valid trials are coded as 0, invalid as 1. For consistancy with
-            # behavioural data.
-        dataDict['validity'].append(abs(1 - (stim[relCueCol] == target)))
+            # behavioural data. Now normal
+        dataDict['validity'].append(int(relcue == target))
     
     data = pd.DataFrame(dataDict, columns=column_list)
 
@@ -246,7 +250,8 @@ def simRW_1c(parameters, data, asm='soft'):
             0. 'selCue_RW' - selected cue by the Rescorla-Wagner model
             1. 'prob_RW' - probability to select cue 0
             2. 'rt_RW' - response time
-            3. 'reward_RW' - reward based on cue selected by Rescorla-Wagner
+            3. 'reward_RW' - reward based on cue selected by Rescorla-Wagner,
+                also the validity of the selected cue
             4. 'RPE_RW' - reward prediction error
             5. 'Men_PE_RW' - Prediction error calculated as in
                 Mengotti et al. (2017)
@@ -304,27 +309,23 @@ def simRW_1c(parameters, data, asm='soft'):
         ## Based on validity
         ##AM: If cue==target reward = 1, if cue!=target reward = 0
         """
-        the model chooses the relevant cue color (1 - white, 2 - black), but
-        you need to also know the direction of the cue (1 - left,  2- right).
-        The direction of the cue is in the column relCue or irrelCue, but the
-        relCue or irrelCue refer to the gorund thruth and not to what the model
-        chooses (selCue). RelCue and irrelCue don’t give you the information
-        about which color is the relevant Cue currently, this information is in
-        the relCueCol (1-white 2 -black). So, it would be easier to recode the
-        data from the perspective of whiteCue and blackCue: if white cue is
-        relevant, you would put the value for relCue direction in the column
-        for white cue, while you would put the value for direction of the
-        irelCue for the black cue.
+        AM: The model chooses the relevant cue color (1 - white, 2 - black),
+        but you need to also know the direction of the cue
+        (1 - left,  2 - right). The direction of the cue is in the column
+        relCue or irrelCue, but the relCue or irrelCue refer to the gorund
+        thruth and not to what the model chooses (selCue). RelCue and irrelCue
+        don’t give you the information about which color is the relevant Cue
+        currently, this information is in the relCueCol (1-white 2 -black). So,
+        it would be easier to recode the data from the perspective of whiteCue
+        and blackCue: if white cue is relevant, you would put the value for
+        relCue direction in the column for white cue, while you would put the
+        value for direction of the irelCue for the black cue.
         """
-        
         outcomes[int(trial.relCueCol)] = trial.relCue == trial.targetLoc
         outcomes[int(1 - trial.relCueCol)] = trial.irrelCue == trial.targetLoc
         reward = int(outcomes[selcue])
         simDict['reward_RW'].append(reward)
-        print('***', trial.relCueCol)
-        print(trial.relCue, trial.irrelCue)
-        print(trial.targetLoc)
-        print(selcue, reward)
+        
         # Update rule (RW)
         # ----------------
         if triali == 0:
@@ -1050,7 +1051,8 @@ def sim_negSpearCor(thetas, data, model, asm='soft'):
 
     # Correlation between RT and RPE
     return - stats.spearmanr(simData[f'rt_{model}'].to_numpy(),
-                             simData[f'RPE_{model}'].to_numpy(),
+                             # simData[f'RPE_{model}'].to_numpy(),
+                             abs(simData[f'RPE_{model}']).to_numpy(),
                              nan_policy = 'omit')[0]
 
 
@@ -1097,7 +1099,9 @@ def sim_accuracy(thetas, data, model, asm='soft'):
     return sum(simData['relCue'] == simData[f'selCue_{model}']) / len(data)
 
 
-def var_bin_switch(dataList, datadir, varList, bin_size=15, uun='All'):
+def var_bin_switch(
+        dataList, datadir, varList, validity='validity', bin_size=15, uun='All'
+        ):
     """
     Bin variability effect of simulated data before and after switch
 
@@ -1151,43 +1155,43 @@ def var_bin_switch(dataList, datadir, varList, bin_size=15, uun='All'):
             for vari in varList:
                 # First 15 trials after switch
                 post15_data = sim_data.loc[starti:
-                                           (starti + bin_size - 1)][['validity', vari]]
+                                           (starti + bin_size - 1)][[validity, vari]]
                 post15[vari].append(
-                    np.nanmean(post15_data[post15_data['validity'] == 0][vari]) -\
-                    np.nanmean(post15_data[post15_data['validity'] == 1][vari])
+                    np.nanmean(post15_data[post15_data[validity] == 0][vari]) -\
+                    np.nanmean(post15_data[post15_data[validity] == 1][vari])
                     )
                 # Trials 15 to 30
                 middle15_data = sim_data.loc[(starti + bin_size):
-                                             (starti + 2 * bin_size - 1)][['validity', vari]]
+                                             (starti + 2 * bin_size - 1)][[validity, vari]]
                 middle15[vari].append(
-                    np.nanmean(middle15_data[middle15_data['validity'] == 0][vari]) -\
-                    np.nanmean(middle15_data[middle15_data['validity'] == 1][vari])
+                    np.nanmean(middle15_data[middle15_data[validity] == 0][vari]) -\
+                    np.nanmean(middle15_data[middle15_data[validity] == 1][vari])
                     )
                 # All trials except for first 30
                 left_data = sim_data.loc[(starti + 2 * bin_size):
-                                         (endi - 1)][['validity', vari]]
+                                         (endi - 1)][[validity, vari]]
                 leftover[vari].append(
-                    np.nanmean(left_data[left_data['validity'] == 0][vari]) -\
-                    np.nanmean(left_data[left_data['validity'] == 1][vari])
+                    np.nanmean(left_data[left_data[validity] == 0][vari]) -\
+                    np.nanmean(left_data[left_data[validity] == 1][vari])
                     )
                 # The 15 trials before switch
                 pre15_data = sim_data.loc[(endi - bin_size):
-                                          (endi - 1)][['validity', vari]]
+                                          (endi - 1)][[validity, vari]]
                 pre15[vari].append(
-                    np.nanmean(pre15_data[pre15_data['validity'] == 0][vari]) -\
-                    np.nanmean(pre15_data[pre15_data['validity'] == 1][vari])
+                    np.nanmean(pre15_data[pre15_data[validity] == 0][vari]) -\
+                    np.nanmean(pre15_data[pre15_data[validity] == 1][vari])
                     )
                 # Last 15 trials or less if there were less than 45 trials
                 # between switches
                 if nover >= bin_size:
                     last15_data = sim_data.loc[(endi - bin_size):
-                                               (endi - 1)][['validity', vari]]
+                                               (endi - 1)][[validity, vari]]
                 else:
                     last15_data = sim_data.loc[(endi - nover):
-                                               (endi - 1)][['validity', vari]]
+                                               (endi - 1)][[validity, vari]]
                 last15[vari].append(
-                    np.nanmean(last15_data[last15_data['validity'] == 0][vari]) -\
-                    np.nanmean(last15_data[last15_data['validity'] == 1][vari])
+                    np.nanmean(last15_data[last15_data[validity] == 0][vari]) -\
+                    np.nanmean(last15_data[last15_data[validity] == 1][vari])
                     )
 
     return post15, middle15, leftover, last15, pre15
