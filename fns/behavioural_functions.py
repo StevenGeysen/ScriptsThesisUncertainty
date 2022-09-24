@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Model functions -- Version 5
-Last edit:  2022/09/08
+"""     Model functions -- Version 5.1
+Last edit:  2022/09/24
 Author(s):  Geysen, Steven (SG)
 Notes:      - Models for the ananlysis of behavioural data from
                 Marzecova et al. (2019)
@@ -16,6 +16,8 @@ Notes:      - Models for the ananlysis of behavioural data from
                 * var_bin_switch
             - Release notes:
                 * var_- and bin_switch
+                * Corrected reward calculations
+                * Negative correlation with absolute values
 To do:      - Adjust models to behavioural data
             - Meta learner
             
@@ -120,6 +122,8 @@ def ppRW_1c(parameters, data, asm='soft'):
     # Model
     ## Estimated value of cue
     Q_est = np.full((n_trials, N_CUES), 1/N_CUES)
+    ## Outcomes
+    outcomes = np.full((2, ), np.nan)
     
     # Policy
     ## Selected cue
@@ -151,7 +155,9 @@ def ppRW_1c(parameters, data, asm='soft'):
         # ------
         ## Based on validity
         ##AM: If cue==target reward = 1, if cue!=target reward = 0
-        reward = int(selcue == trial.targetLoc)
+        outcomes[int(trial.relCueCol)] = trial.relCue == trial.targetLoc
+        outcomes[int(1 - trial.relCueCol)] = trial.irrelCue == trial.targetLoc
+        reward = int(outcomes[selcue])
         ppDict['reward_RW'].append(reward)
         
         # Update rule (RW)
@@ -229,6 +235,8 @@ def ppHybrid_1c(parameters, data, salpha=0.01, asm='soft'):
     alpha = np.full((n_trials, N_CUES), salpha)
     ## Estimated value of cue
     Q_est = np.full((n_trials, N_CUES), 1/N_CUES)
+    ## Outcomes
+    outcomes = np.full((2, ), np.nan)
     
     # Policy
     ## Selected cue
@@ -260,7 +268,9 @@ def ppHybrid_1c(parameters, data, salpha=0.01, asm='soft'):
         # ------
         ## Based on validity
         ##AM: If cue==target reward = 1, if cue!=target reward = 0
-        reward = int(selcue == trial.targetLoc)
+        outcomes[int(trial.relCueCol)] = trial.relCue == trial.targetLoc
+        outcomes[int(1 - trial.relCueCol)] = trial.irrelCue == trial.targetLoc
+        reward = int(outcomes[selcue])
         ppDict['reward_H'].append(reward)
         
         # Hybrid
@@ -337,6 +347,8 @@ def ppMeta_1c(parameters, data, asm='soft'):
     # Model
     ## Estimated value of cue
     Q_est = np.full((n_trials, N_CUES), 1/N_CUES)
+    ## Outcomes
+    outcomes = np.full((2, ), np.nan)
     ## Estimate of expected uncertainty calculated from the history of URPEs
     epsilon = 0.5
     
@@ -370,7 +382,9 @@ def ppMeta_1c(parameters, data, asm='soft'):
         # ------
         ## Based on validity
         ##AM: If cue==target reward = 1, if cue!=target reward = 0
-        reward = int(selcue == trial.targetLoc)
+        outcomes[int(trial.relCueCol)] = trial.relCue == trial.targetLoc
+        outcomes[int(1 - trial.relCueCol)] = trial.irrelCue == trial.targetLoc
+        reward = int(outcomes[selcue])
         ppDict['reward_M'].append(reward)
         
         # Update rule
@@ -449,6 +463,8 @@ def ppRW_2c(parameters, data, asm='soft'):
     # Model
     ## Estimated value of cue
     Q_est = np.full((n_trials, N_CUES), 1/N_CUES)
+    ## Outcomes
+    outcomes = np.full((2, ), np.nan)
     
     # Policy
     ## Selected cue
@@ -480,7 +496,9 @@ def ppRW_2c(parameters, data, asm='soft'):
         # ------
         ## Based on validity
         ##AM: If cue==target reward = 1, if cue!=target reward = 0
-        reward = int(selcue == trial.targetLoc)
+        outcomes[int(trial.relCueCol)] = trial.relCue == trial.targetLoc
+        outcomes[int(1 - trial.relCueCol)] = trial.irrelCue == trial.targetLoc
+        reward = int(outcomes[selcue])
         ppDict['reward_RW2'].append(reward)
         
         # Update rule (RW)
@@ -561,6 +579,8 @@ def ppHybrid_2c(parameters, data, salpha=0.01, asm='soft'):
     alpha = np.full((n_trials, N_CUES), salpha)
     ## Estimated value of cue
     Q_est = np.full((n_trials, N_CUES), 1/N_CUES)
+    ## Outcomes
+    outcomes = np.full((2, ), np.nan)
     
     # Policy
     ## Selected cue
@@ -592,7 +612,9 @@ def ppHybrid_2c(parameters, data, salpha=0.01, asm='soft'):
         # ------
         ## Based on validity
         ##AM: If cue==target reward = 1, if cue!=target reward = 0
-        reward = int(selcue == trial.targetLoc)
+        outcomes[int(trial.relCueCol)] = trial.relCue == trial.targetLoc
+        outcomes[int(1 - trial.relCueCol)] = trial.irrelCue == trial.targetLoc
+        reward = int(outcomes[selcue])
         ppDict['reward_H2'].append(reward)
         
         # Hybrid
@@ -665,6 +687,8 @@ def ppWSLS(data):
     N_CUES = 2
     ## Reward
     reward = np.nan
+    ## Outcomes
+    outcomes = np.full((2, ), np.nan)
     ## Selected cues
     selcues = np.full((n_trials, ), np.nan)
 
@@ -680,17 +704,20 @@ def ppWSLS(data):
                 selcues[triali] = selcues[triali - 1]
             else:
                 selcues[triali] = 1 - selcues[triali - 1]
+        ppDict['selCue_W'].append(selcues[triali])
+        
         # Reward
         # ------
         ## Based on validity
         ##AM: If cue==target reward = 1, if cue!=target reward = 0
-        reward = int(selcues[triali] == trial.targetLoc)
+        outcomes[int(trial.relCueCol)] = trial.relCue == trial.targetLoc
+        outcomes[int(1 - trial.relCueCol)] = trial.irrelCue == trial.targetLoc
+        reward = int(outcomes[selcues[triali]])
+        ppDict['reward_W'].append(reward)
         
-        ppDict['selCue_W'].append(selcues[triali])
         ##SG: If there is some uncertainty in which cue Wilhelm will pick,
             # there is something wrong in the model.
         ppDict['prob_W'].append(1)
-        ppDict['reward_W'].append(reward)
 
     return af.save_data(ppDict, data, var_list)
 
@@ -723,13 +750,18 @@ def ppRandom(data):
     
     # Number of cues
     N_CUES = 2
+    ## Outcomes
+    outcomes = np.full((2, ), np.nan)
 
     # Trial loop
     for triali, trial in data.iterrows():
         selcue = np.random.randint(N_CUES)
         ppDict['selCue_R'].append(selcue)
         ppDict['prob_R'].append(0.5)
-        reward = int(selcue == trial.targetLoc)
+        ##AM: If cue==target reward = 1, if cue!=target reward = 0
+        outcomes[int(trial.relCueCol)] = trial.relCue == trial.targetLoc
+        outcomes[int(1 - trial.relCueCol)] = trial.irrelCue == trial.targetLoc
+        reward = int(outcomes[selcue])
         ppDict['reward_R'].append(reward)
 
     return af.save_data(ppDict, data, var_list)
@@ -780,7 +812,8 @@ def pp_negSpearCor(thetas, data, model, asm='soft'):
 
     # Correlation between RT and RPE
     return - stats.spearmanr(simData['RT'].to_numpy(),
-                             simData[f'RPE_{model}'].to_numpy(),
+                             # simData[f'RPE_{model}'].to_numpy(),
+                             abs(simData[f'RPE_{model}']).to_numpy(),
                              nan_policy = 'omit')[0]
 
 
@@ -865,7 +898,7 @@ def bin_switch(data, varList, bin_size=15):
     return post15, middle15, leftover, last15, pre15
 
 
-def var_bin_switch(data, varList, bin_size=15, uun='All'):
+def var_bin_switch(data, varList, validity='validity', bin_size=15, uun='All'):
     """
     Bin variability effect of behavioural data before and after switch
 
@@ -926,43 +959,43 @@ def var_bin_switch(data, varList, bin_size=15, uun='All'):
             for vari in varList:
                 # First 15 trials after switch
                 post15_data = pp_data.loc[starti:
-                                           (starti + bin_size - 1)][['validity', vari]]
+                                           (starti + bin_size - 1)][[validity, vari]]
                 post15[vari].append(
-                    np.nanmean(post15_data[post15_data['validity'] == 0][vari]) -\
-                    np.nanmean(post15_data[post15_data['validity'] == 1][vari])
+                    np.nanmean(post15_data[post15_data[validity] == 0][vari]) -\
+                    np.nanmean(post15_data[post15_data[validity] == 1][vari])
                     )
                 # Trials 15 to 30
                 middle15_data = pp_data.loc[(starti + bin_size):
-                                             (starti + 2 * bin_size - 1)][['validity', vari]]
+                                             (starti + 2 * bin_size - 1)][[validity, vari]]
                 middle15[vari].append(
-                    np.nanmean(middle15_data[middle15_data['validity'] == 0][vari]) -\
-                    np.nanmean(middle15_data[middle15_data['validity'] == 1][vari])
+                    np.nanmean(middle15_data[middle15_data[validity] == 0][vari]) -\
+                    np.nanmean(middle15_data[middle15_data[validity] == 1][vari])
                     )
                 # All trials except for first 30
                 left_data = pp_data.loc[(starti + 2 * bin_size):
-                                         (endi - 1)][['validity', vari]]
+                                         (endi - 1)][[validity, vari]]
                 leftover[vari].append(
-                    np.nanmean(left_data[left_data['validity'] == 0][vari]) -\
-                    np.nanmean(left_data[left_data['validity'] == 1][vari])
+                    np.nanmean(left_data[left_data[validity] == 0][vari]) -\
+                    np.nanmean(left_data[left_data[validity] == 1][vari])
                     )
                 # The 15 trials before switch
                 pre15_data = pp_data.loc[(endi - bin_size):
-                                          (endi - 1)][['validity', vari]]
+                                          (endi - 1)][[validity, vari]]
                 pre15[vari].append(
-                    np.nanmean(pre15_data[pre15_data['validity'] == 0][vari]) -\
-                    np.nanmean(pre15_data[pre15_data['validity'] == 1][vari])
+                    np.nanmean(pre15_data[pre15_data[validity] == 0][vari]) -\
+                    np.nanmean(pre15_data[pre15_data[validity] == 1][vari])
                     )
                 # Last 15 trials or less if there were less than 45 trials
                 # between switches
                 if nover >= bin_size:
                     last15_data = pp_data.loc[(endi - bin_size):
-                                               (endi - 1)][['validity', vari]]
+                                               (endi - 1)][[validity, vari]]
                 else:
                     last15_data = pp_data.loc[(endi - nover):
-                                               (endi - 1)][['validity', vari]]
+                                               (endi - 1)][[validity, vari]]
                 last15[vari].append(
-                    np.nanmean(last15_data[last15_data['validity'] == 0][vari]) -\
-                    np.nanmean(last15_data[last15_data['validity'] == 1][vari])
+                    np.nanmean(last15_data[last15_data[validity] == 0][vari]) -\
+                    np.nanmean(last15_data[last15_data[validity] == 1][vari])
                     )
 
     return post15, middle15, leftover, last15, pre15
