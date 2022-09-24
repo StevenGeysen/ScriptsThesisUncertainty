@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Analysis simulations: Alpha recovery -- Version 3.1.1
-Last edit:  2022/09/01
+"""     Analysis simulations: Alpha recovery -- Version 3.1.2
+Last edit:  2022/09/24
 Author(s):  Geysen, Steven (SG)
 Notes:      - Analysis of the task used by Marzecova et al. (2019), simulated
                 with argmax policy
             - Release notes:
-                * Bug fixes
+                * Shuffle list with simulations
                 
 To do:      - Explore models
             - Performance plots (box 2 - figure 1.A)
@@ -22,6 +22,7 @@ Sources:    https://elifesciences.org/articles/49547
 #%% ~~ Imports and directories ~~ %%#
 
 
+import random
 import re
 import time
 
@@ -48,8 +49,10 @@ SIM_DIR = OUT_DIR / 'simulations/argmax'
 
 
 # Filenames of simulated data
-simList = [filei.name for filei in Path.iterdir(SIM_DIR)]
-simList = simList[:20]  ##SG: First few to test everything quickly.
+simList = [filei.name for filei in Path.iterdir(SIM_DIR)
+           if filei.name.endswith('csv')]
+random.shuffle(simList)
+simList = simList[:50]  ##SG: First few to test everything quickly.
 # Experimental structure
 exStruc = pd.read_csv(SIM_DIR / simList[0], index_col='Unnamed: 0')
 

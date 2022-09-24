@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Analysis simulations: Softmax -- Version 4.2.1
-Last edit:  2022/09/13
+"""     Analysis simulations: Softmax -- Version 4.2.2
+Last edit:  2022/09/24
 Author(s):  Geysen, Steven (SG)
 Notes:      - Analysis of simulated data of the task used by
                 Marzecova et al. (2019)
             - Release notes:
-                * Accuracy
-                * Optimal values Nelder-Mead
+                * Shuffle list with simulations
                 
 To do:      - Nelder-Mead
             - Explore models
@@ -24,6 +23,7 @@ Sources:    https://elifesciences.org/articles/49547
 #%% ~~ Imports and directories ~~ %%#
 
 
+import random
 import re
 import time
 
@@ -54,6 +54,7 @@ if not Path.exists(OPT_DIR):
 # Filenames of simulated data
 simList = [filei.name for filei in Path.iterdir(SIM_DIR)
            if filei.name.endswith('csv')]
+random.shuffle(simList)
 simList = simList[:50]  ##SG: First few to test everything quickly.
 # Experimental structure
 exStruc = pd.read_csv(SIM_DIR / simList[0], index_col='Unnamed: 0')
