@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Plot functions -- Version 3.3
-Last edit:  2022/09/13
+"""     Plot functions -- Version 3.3.1
+Last edit:  2022/09/24
 Author(s):  Geysen, Steven (SG)
 Notes:      - Functions used to plot output
                 * Sanity checks
@@ -14,6 +14,7 @@ Notes:      - Functions used to plot output
                 * Heatmaps
             - Release notes:
                 * Corrected learning curve
+                * Model validity
             
 To do:      - Add functions of other often used plots
             - Make plots work with participant data
@@ -211,8 +212,18 @@ def pe_validity(model, dataList, datadir, wsls=False):
         invalid_pe = []
         for filei in dataList:
             data = pd.read_csv(datadir / filei, index_col='Unnamed: 0')
-            valid_pe.append(list(data[f'RPE_{modeli}'].loc[data['validity'] == True]))
-            invalid_pe.append(list(data[f'RPE_{modeli}'].loc[data['validity'] == False]))
+            # valid_pe.append(
+            #     list(data[f'RPE_{modeli}'].loc[data['validity'] == True])
+            #     )
+            valid_pe.append(
+                list(data[f'RPE_{modeli}'].loc[data[f'reward_{modeli}'] == True])
+                )
+            # invalid_pe.append(
+            #     list(data[f'RPE_{modeli}'].loc[data['validity'] == False])
+            #     )
+            invalid_pe.append(
+                list(data[f'RPE_{modeli}'].loc[data[f'reward_{modeli}'] == False])
+                )
         ## Reshape
         valid_long = [i for listi in valid_pe for i in listi]
         invalid_long = [i for listi in invalid_pe for i in listi]
