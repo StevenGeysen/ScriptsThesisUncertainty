@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Behavioural model fit -- Version 3.1.3
-Last edit:  2022/09/01
+"""     Behavioural model fit -- Version 3.1.4
+Last edit:  2022/09/24
 Author(s):  Geysen, Steven (SG)
 Notes:      - Fit models to behavioural data of Marzecova et al. (2019)
             - Release notes:
-                * Removed redundant plots
-                * Fixed Nelder-Mead bug
+                * Increased range beta options
                 
 To do:      - Fit models
             - Statistics
@@ -113,7 +112,7 @@ alpha_options = np.linspace(0.01, 1, 20)
 ##SG: The SoftMax policy needs a high beta value for the model to be accurate
     # (see simulations). Therefore it is not usefull to look at beta values
     # smaller than 10.
-beta_options = np.linspace(10, 20, 20)
+beta_options = np.linspace(0.1, 20, 20)
 
 # Plot specs
 ## Plot number
