@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Analysis behavioural fitted -- Version 4.2
-Last edit:  2022/09/13
+"""     Analysis behavioural fitted -- Version 4.2.1
+Last edit:  2022/09/26
 Author(s):  Geysen, Steven (SG)
 Notes:      - Analysis of behavioural data after model fitting (SoftMax models)
             - Release notes:
@@ -101,9 +101,11 @@ scaList = [
     ]
 un_data.loc[:, (scaList)] = abs(un_data.loc[:, (scaList)] - 1)
 ## Parameter values
-thetas_RW_soft = pd.read_csv(RES_DIR / 'pp_NelderMead_10iters_softmax_RW.csv',
+# thetas_RW_soft = pd.read_csv(RES_DIR / 'pp_NelderMead_10iters_softmax_RW.csv',
+thetas_RW_soft = pd.read_csv(RES_DIR / 'pp_gridsearch_10iters_softmax_RW.csv',
                              index_col='Unnamed: 0')
-thetas_H_soft = pd.read_csv(RES_DIR / 'pp_NelderMead_10iters_softmax_H.csv',
+# thetas_H_soft = pd.read_csv(RES_DIR / 'pp_NelderMead_10iters_softmax_H.csv',
+thetas_H_soft = pd.read_csv(RES_DIR / 'pp_gridsearch_10iters_softmax_H.csv',
                             index_col='Unnamed: 0')
 
 # Number of participants
@@ -152,7 +154,7 @@ for ppi in range(npp):
     dataList.append(Renee)
 
     plt.figure(plotnr)
-    title = 'Cue selection {ppi}'
+    title = f'Cue selection {ppi}'
     ## True cue
     plt.plot(Renee[['relCueCol']], label='True cue', linestyle='-.')
     ## Selected cue
@@ -238,7 +240,7 @@ for datai, labeli in zip(dataList, plabels):
 
 for modeli in ['RW', 'H', 'W', 'R']:
     print(
-        sum(complete_data['relCue'] == complete_data[f'selCue_{modeli}']) /\
+        sum(complete_data['relCueCol'] == complete_data[f'selCue_{modeli}']) /\
             len(complete_data)
         )
 
@@ -251,7 +253,7 @@ for modeli in ['RW', 'H', 'W', 'R']:
 for labeli in plabels:
     print(f' {labeli} UUn '.center(20, '='))
     post15, middle15, _, last15, _ = bf.var_bin_switch(
-        complete_data, relVar, NBIN, labeli
+        complete_data, relVar, 'validity', NBIN, labeli
         )
     
     # Marzecová et al. (2019)

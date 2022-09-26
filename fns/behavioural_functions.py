@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""     Model functions -- Version 5.1
-Last edit:  2022/09/24
+"""     Model functions -- Version 5.1.1
+Last edit:  2022/09/26
 Author(s):  Geysen, Steven (SG)
 Notes:      - Models for the ananlysis of behavioural data from
                 Marzecova et al. (2019)
@@ -701,9 +701,9 @@ def ppWSLS(data):
             selcues[triali] = np.random.randint(N_CUES)
         else:
             if reward == 1:
-                selcues[triali] = selcues[triali - 1]
+                selcues[triali] = int(selcues[triali - 1])
             else:
-                selcues[triali] = 1 - selcues[triali - 1]
+                selcues[triali] = int(1 - selcues[triali - 1])
         ppDict['selCue_W'].append(selcues[triali])
         
         # Reward
@@ -712,7 +712,7 @@ def ppWSLS(data):
         ##AM: If cue==target reward = 1, if cue!=target reward = 0
         outcomes[int(trial.relCueCol)] = trial.relCue == trial.targetLoc
         outcomes[int(1 - trial.relCueCol)] = trial.irrelCue == trial.targetLoc
-        reward = int(outcomes[selcues[triali]])
+        reward = int(outcomes[int(selcues[triali])])
         ppDict['reward_W'].append(reward)
         
         ##SG: If there is some uncertainty in which cue Wilhelm will pick,
